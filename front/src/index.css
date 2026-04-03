@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'Vogue';
+  src: url('/fonts/Vogue.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@theme {
+  --color-dk-red: #BD0003;
+  --color-dk-dark: #191919;
+  --color-dk-gold: #D4AF37;
+  --font-vogue: 'Vogue', serif;
+}
+
+body {
+  background-color: var(--color-dk-dark);
+  color: #ffffff;
+  font-family: 'Bahnschrift', sans-serif; /* Usamos la secundaria por defecto para lectura */
+}
