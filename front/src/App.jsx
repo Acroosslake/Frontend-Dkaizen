@@ -23,7 +23,7 @@ function App() {
         <Route path="/nosotros" element={<Nosotros />} />
         <Route path="/servicios" element={<Servicios />} /> 
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/restablecer-contrasena" element={<ResetPassword />} />
 
       </Routes>
     </BrowserRouter>
