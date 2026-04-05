@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { AuthContext } from '../context/AuthContext'; // <-- Importamos el cerebro
 
 function Dashboard() {
   const navigate = useNavigate();
+  const { logout } = useContext(AuthContext); // <-- Extraemos la función oficial de salida
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/');
+    logout(); // <-- Esto borra el token, limpia el estado y te manda al login
   };
 
   // Variantes para escalonar las animaciones de las tarjetas

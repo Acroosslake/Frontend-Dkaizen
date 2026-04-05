@@ -8,4 +8,10 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  // 👇 ESTE ES EL MARTILLO QUE ROMPE EL ESCUDO DE CODESPACES 👇
+  server: {
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+    }
+  }
 })

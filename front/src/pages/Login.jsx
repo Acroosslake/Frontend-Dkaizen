@@ -1,8 +1,9 @@
 // src/pages/Login.jsx
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react'; // 1. Añadimos useContext
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useGoogleLogin } from '@react-oauth/google';
+import { AuthContext } from '../context/AuthContext'; // 2. Importamos el cerebro
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -10,6 +11,9 @@ function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  
+  // 3. Extraemos la función mágica login de tu contexto
+  const { login } = useContext(AuthContext);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -22,8 +26,17 @@ function Login() {
         password: password
       });
 
-      localStorage.setItem('token', response.data.token);
-      navigate('/dashboard');
+      // 4. USAMOS LA FUNCIÓN DEL CONTEXTO (No localStorage manual)
+      await login(response.data.token);
+      
+      // 5. Redirigimos según el rol
+      const userRole = response.data.user.role;
+      if (userRole === 'admin') {
+          navigate('/dashboard');
+      } else {
+          navigate('/reservas'); // Los clientes van aquí
+      }
+
     } catch (err) {
       console.error(err);
       setError('Credenciales incorrectas. Verifica tu correo y contraseña.');
@@ -41,12 +54,22 @@ function Login() {
           token: tokenResponse.access_token
         });
 
-        localStorage.setItem('token', response.data.token);
-        navigate('/dashboard');
+        // 6. USAMOS LA FUNCIÓN DEL CONTEXTO PARA GOOGLE TAMBIÉN
+        await login(response.data.token);
+        
+        // 7. Redirigimos según el rol del usuario de Google
+        const userRole = response.data.user.role;
+        if (userRole === 'admin') {
+            navigate('/dashboard');
+        } else {
+            navigate('/reservas'); // Por defecto, los de Google serán clientes
+        }
+
       } catch (err) {
         console.error("Error en backend al validar Google:", err);
         setError('Error al conectar tu cuenta de Google con nuestro servidor.');
-        setLoading(false);
+      } finally {
+        setLoading(false); // Faltaba esto para desbloquear el botón si falla
       }
     },
     onError: () => {
@@ -133,7 +156,8 @@ function Login() {
             <button
               onClick={() => handleGoogleLogin()}
               type="button"
-              className="w-full flex items-center justify-center space-x-3 bg-white hover:bg-gray-100 text-gray-900 font-bold py-3 px-4 rounded-lg transition-all duration-300 shadow-md"
+              disabled={loading}
+              className="w-full flex items-center justify-center space-x-3 bg-white hover:bg-gray-100 text-gray-900 font-bold py-3 px-4 rounded-lg transition-all duration-300 shadow-md disabled:opacity-50"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />

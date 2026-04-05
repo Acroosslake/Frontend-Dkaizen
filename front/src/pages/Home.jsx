@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useContext } from 'react'; // 1. Agregamos useContext
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { AuthContext } from '../context/AuthContext'; // 2. Traemos el cerebro
 
 function Home() {
+  // 3. Extraemos al usuario actual para saber si es el Jefe
+  const { user } = useContext(AuthContext);
+
   return (
     <div className="relative min-h-screen bg-dk-dark overflow-hidden font-sans text-white">
       
@@ -20,9 +24,17 @@ function Home() {
             <Link to="/reservas" className="hover:text-dk-gold transition">Reservas</Link>
           </ul>
 
-          <Link to="/login" className="flex items-center space-x-2 bg-black/40 px-4 py-1.5 rounded-full hover:bg-black/60 transition text-white border border-gray-700">
-            <span className="text-sm tracking-wide">Admin Access</span>
-          </Link>
+          {/* 4. EL BOTÓN INTELIGENTE */}
+          {user && user.role === 'admin' ? (
+            <Link to="/dashboard" className="flex items-center space-x-2 bg-black/80 px-4 py-1.5 rounded-full hover:bg-black transition text-dk-gold border border-dk-gold/50 shadow-[0_0_10px_rgba(212,175,55,0.2)]">
+              <span className="text-sm tracking-wide font-bold">Panel Admin</span>
+            </Link>
+          ) : (
+            <Link to="/login" className="flex items-center space-x-2 bg-black/40 px-4 py-1.5 rounded-full hover:bg-black/60 transition text-white border border-gray-700">
+              <span className="text-sm tracking-wide">Admin Access</span>
+            </Link>
+          )}
+
         </nav>
       </header>
 
@@ -94,7 +106,7 @@ function Home() {
         </div>
       </section>
 
-      {/* SECCIÓN 3: UBICACIÓN Y MAPA (NUEVA) */}
+      {/* SECCIÓN 3: UBICACIÓN Y MAPA */}
       <section className="relative z-10 bg-[#0a0a0a] py-24 px-4 border-t border-gray-900 border-b">
         <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-12 items-center">
           
@@ -148,7 +160,7 @@ function Home() {
             transition={{ duration: 0.8 }}
             className="w-full lg:w-1/2 h-[400px] rounded-2xl overflow-hidden border border-gray-800 shadow-[0_0_30px_rgba(212,175,55,0.05)]"
           >
-            {/* iFrame de Google Maps (Modo oscuro aplicado por CSS nativo de Google) */}
+            {/* iFrame de Google Maps */}
             <iframe 
               src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15907.039641477759!2d-74.05389!3d4.6669!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8e3f9a5e8c1e8d6f%3A0x2a3e5c7a4b8a4f0!2sZona%20T%20Bogota!5e0!3m2!1sen!2sco!4v1650000000000!5m2!1sen!2sco" 
               width="100%" 
