@@ -11,7 +11,6 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // 1. INICIO DE SESIÓN NORMAL
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
@@ -23,7 +22,6 @@ function Login() {
         password: password
       });
 
-      // Guardamos el token exacto que manda Laravel
       localStorage.setItem('token', response.data.token);
       navigate('/dashboard');
     } catch (err) {
@@ -34,18 +32,15 @@ function Login() {
     }
   };
 
-  // 2. INICIO DE SESIÓN MÁGICO CON GOOGLE
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setError('');
       setLoading(true);
       try {
-        // Le mandamos el token de Google a tu Laravel
         const response = await axios.post(`${import.meta.env.VITE_API_URL}/auth/google`, {
           token: tokenResponse.access_token
         });
 
-        // Guardamos el token VIP de D'Kaizen
         localStorage.setItem('token', response.data.token);
         navigate('/dashboard');
       } catch (err) {
@@ -104,18 +99,26 @@ function Login() {
               className="w-full px-4 py-3 bg-[#111111] border border-gray-700 rounded-lg focus:outline-none focus:border-dk-red focus:ring-1 focus:ring-dk-red text-white transition-colors"
               placeholder="••••••••"
             />
+            {/* BOTÓN DE OLVIDÉ MI CONTRASEÑA */}
+            <div className="flex justify-end mt-2">
+              <Link 
+                to="/forgot-password" 
+                className="text-[10px] uppercase tracking-[0.2em] text-gray-500 hover:text-dk-gold transition-colors font-bold"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-dk-red hover:bg-red-800 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 shadow-[0_0_10px_rgba(189,0,3,0.3)] disabled:opacity-50"
+            className="w-full bg-dk-red hover:bg-red-800 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 shadow-[0_0_10px_rgba(189,0,3,0.3)] disabled:opacity-50 mt-2"
           >
             {loading ? 'Iniciando sesión...' : 'INGRESAR'}
           </button>
         </form>
 
-        {/* DIVISOR Y BOTÓN DE GOOGLE */}
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">

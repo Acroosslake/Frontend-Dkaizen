@@ -1,4 +1,3 @@
-// src/App.jsx
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -6,8 +5,10 @@ import Dashboard from './pages/Dashboard';
 import Agenda from './pages/Agenda';
 import Staff from './pages/Staff';
 import Reservas from './pages/Reservas';
-import Nosotros from './pages/Nosotros'; // <-- Nueva
-import Servicios from './pages/Servicios'; // <-- Nueva
+import Nosotros from './pages/Nosotros'; 
+import Servicios from './pages/Servicios'; 
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
   return (
@@ -19,8 +20,11 @@ function App() {
         <Route path="/agenda" element={<Agenda />} />
         <Route path="/staff" element={<Staff />} />
         <Route path="/reservas" element={<Reservas />} />
-        <Route path="/nosotros" element={<Nosotros />} /> {/* <-- Nueva */}
-        <Route path="/servicios" element={<Servicios />} /> {/* <-- Nueva */}
+        <Route path="/nosotros" element={<Nosotros />} />
+        <Route path="/servicios" element={<Servicios />} /> 
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+
       </Routes>
     </BrowserRouter>
   );
