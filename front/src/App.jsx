@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute'; // <-- Importante el portero
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -12,21 +13,30 @@ import ResetPassword from './pages/ResetPassword';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
+    <Routes>
+      {/* 🟢 RUTAS PÚBLICAS */}
+      <Route path="/" element={<Home />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/nosotros" element={<Nosotros />} />
+      <Route path="/servicios" element={<Servicios />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/restablecer-contrasena" element={<ResetPassword />} />
+
+      {/* 🟡 RUTAS PROTEGIDAS PARA CLIENTES */}
+      <Route element={<ProtectedRoute allowedRoles={['client']} />}>
+        <Route path="/reservas" element={<Reservas />} />
+      </Route>
+
+      {/* 🔴 RUTAS PROTEGIDAS PARA ADMINS */}
+      <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/agenda" element={<Agenda />} />
         <Route path="/staff" element={<Staff />} />
-        <Route path="/reservas" element={<Reservas />} />
-        <Route path="/nosotros" element={<Nosotros />} />
-        <Route path="/servicios" element={<Servicios />} /> 
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/restablecer-contrasena" element={<ResetPassword />} />
-
-      </Routes>
-    </BrowserRouter>
+      </Route>
+      
+      {/* 404 */}
+      <Route path="*" element={<h1>404 - Te perdiste, fiera.</h1>} />
+    </Routes>
   );
 }
 
