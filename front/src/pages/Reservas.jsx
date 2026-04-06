@@ -8,11 +8,11 @@ function Reservas() {
   const navigate = useNavigate();
   const { user, logout } = useContext(AuthContext);
 
-  // --- ESTADOS PARA DATOS REALES ---
+  // --- ESTADOS DE DATOS ---
   const [serviciosDB, setServiciosDB] = useState([]);
   const [barberosDB, setBarberosDB] = useState([]);
   
-  // --- ESTADOS DE SELECCIÓN (Tus variables originales) ---
+  // --- ESTADOS DE SELECCIÓN ---
   const [servicio, setServicio] = useState(null);
   const [barbero, setBarbero] = useState(null);
   const [hora, setHora] = useState(null);
@@ -21,28 +21,27 @@ function Reservas() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Cargar datos de la API al entrar
+  // 1. CARGA DE DATOS SEPARADA
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [resServ, resBarb] = await Promise.all([
-          api.get('/services'),
-          api.get('/barbers')
-        ]);
-        setServiciosDB(resServ.data.filter(s => s.status)); // Solo activos
-        setBarberosDB(resBarb.data);
-      } catch (error) {
-        console.error("Error al cargar datos", error);
-      }
+        const resServ = await api.get('/services');
+        setServiciosDB(Array.isArray(resServ.data) ? resServ.data : []);
+
+        try {
+          const resBarb = await api.get('/barbers');
+          setBarberosDB(Array.isArray(resBarb.data) ? resBarb.data : []);
+        } catch (e) { console.error("Error barberos:", e); }
+      } catch (e) { console.error("Error servicios:", e); }
     };
     fetchData();
   }, []);
 
-  // Función para procesar la reserva
+  // 2. FUNCIÓN DE RESERVA
   const handleConfirmarReserva = async () => {
+    if (!servicio || !barbero || !hora) return;
     setLoading(true);
     try {
-      // Formateamos la hora (Ej: "10:00 AM" -> "10:00:00")
       const [time, modifier] = hora.split(' ');
       let [hours, minutes] = time.split(':');
       if (modifier === 'PM' && hours !== '12') hours = parseInt(hours, 10) + 12;
@@ -69,7 +68,7 @@ function Reservas() {
   return (
     <div className="min-h-screen bg-dk-dark text-white font-sans pb-20 relative">
       
-      {/* NAVBAR (Tu estilo original) */}
+      {/* NAVBAR PÚBLICO PREMIUM */}
       <header className="pt-6 w-full flex justify-center relative z-50">
         <nav className="bg-dk-red/90 backdrop-blur-sm rounded-full w-[90%] max-w-5xl px-8 py-3 flex justify-between items-center shadow-2xl">
           <Link to="/" className="text-white font-vogue text-2xl tracking-widest">D'Kaizen</Link>
@@ -95,34 +94,21 @@ function Reservas() {
               <AnimatePresence>
                 {isMenuOpen && (
                   <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
+                    initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
                     className="absolute right-0 mt-3 w-48 bg-[#111111] border border-gray-800 rounded-xl shadow-2xl py-2 overflow-hidden z-50"
                   >
                     {user.role === 'admin' && (
-                      <Link to="/dashboard" className="block px-4 py-2 text-sm text-dk-gold font-bold hover:bg-gray-800 transition-colors">
-                        Panel Admin
-                      </Link>
+                      <Link to="/dashboard" className="block px-4 py-2 text-sm text-dk-gold font-bold hover:bg-gray-800 transition-colors">Panel Admin</Link>
                     )}
-                    <Link to="/perfil" className="block px-4 py-2 text-sm text-gray-300 hover:bg-dk-red hover:text-white transition-colors">
-                      Mi Perfil
-                    </Link>
+                    <Link to="/perfil" className="block px-4 py-2 text-sm text-gray-300 hover:bg-dk-red hover:text-white transition-colors">Mi Perfil</Link>
                     <div className="border-t border-gray-800 my-1"></div>
-                    <button 
-                      onClick={() => { setIsMenuOpen(false); logout(); }}
-                      className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500 hover:text-white transition-colors font-medium"
-                    >
-                      Cerrar Sesión
-                    </button>
+                    <button onClick={logout} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500 hover:text-white transition-colors font-medium">Cerrar Sesión</button>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
           ) : (
-            <Link to="/login" className="flex items-center space-x-2 bg-black/40 px-4 py-1.5 rounded-full hover:bg-black/60 transition text-white border border-gray-700">
-              <span className="text-sm">Iniciar Sesión</span>
-            </Link>
+            <Link to="/login" className="bg-black/40 px-4 py-1.5 rounded-full hover:bg-black/60 transition text-white border border-gray-700 text-sm">Iniciar Sesión</Link>
           )}
         </nav>
       </header>
@@ -136,20 +122,18 @@ function Reservas() {
 
         <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }} className="space-y-12">
           
-          {/* PASO 1: SERVICIOS DINÁMICOS */}
+          {/* PASO 1: SERVICIOS */}
           <section>
             <h2 className="text-xl font-light mb-6 flex items-center border-b border-gray-800 pb-2">
               <span className="text-dk-gold font-vogue text-2xl mr-3">01.</span> Selecciona un Servicio
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {serviciosDB.map((s) => (
-                <div 
-                  key={s.id}
+              {serviciosDB.length > 0 ? serviciosDB.map((s) => (
+                <motion.div 
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} key={s.id}
                   onClick={() => setServicio(s.id)}
                   className={`p-6 border rounded-xl cursor-pointer transition-all duration-300 ${
-                    servicio === s.id 
-                    ? 'border-dk-gold bg-dk-gold/10 shadow-[0_0_15px_rgba(212,175,55,0.2)] transform scale-105' 
-                    : 'border-gray-800 bg-[#111111] hover:border-gray-500'
+                    servicio === s.id ? 'border-dk-gold bg-dk-gold/10 shadow-[0_0_15px_rgba(212,175,55,0.2)]' : 'border-gray-800 bg-[#111111] hover:border-gray-500'
                   }`}
                 >
                   <h3 className="font-medium text-lg mb-2">{s.name}</h3>
@@ -157,34 +141,32 @@ function Reservas() {
                     <span className="text-white font-bold">${s.price}</span>
                     <span>⏱ {s.duration} min</span>
                   </div>
-                </div>
-              ))}
+                </motion.div>
+              )) : <p className="text-gray-500 italic">Cargando servicios...</p>}
             </div>
           </section>
 
-          {/* PASO 2: BARBEROS DINÁMICOS */}
+          {/* PASO 2: BARBEROS */}
           <section className={`transition-all duration-500 ${servicio ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
             <h2 className="text-xl font-light mb-6 flex items-center border-b border-gray-800 pb-2">
               <span className="text-dk-gold font-vogue text-2xl mr-3">02.</span> Elige a tu Barbero
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {barberosDB.map((b) => (
-                <div 
-                  key={b.id}
+              {barberosDB.length > 0 ? barberosDB.map((b) => (
+                <motion.div 
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} key={b.id}
                   onClick={() => setBarbero(b.id)}
                   className={`p-4 border rounded-xl text-center cursor-pointer transition-all duration-300 ${
-                    barbero === b.id 
-                    ? 'border-dk-red bg-dk-red/10 transform scale-105' 
-                    : 'border-gray-800 bg-[#111111] hover:border-gray-500'
+                    barbero === b.id ? 'border-dk-red bg-dk-red/10' : 'border-gray-800 bg-[#111111] hover:border-gray-500'
                   }`}
                 >
                   <div className="w-12 h-12 mx-auto bg-gray-800 rounded-full mb-3 border border-gray-600 overflow-hidden">
-                    <img src={b.image || 'https://via.placeholder.com/150'} alt={b.user?.name} className="w-full h-full object-cover" />
+                    <img src={b.image || 'https://via.placeholder.com/150'} alt="Barbero" className="w-full h-full object-cover" />
                   </div>
                   <h3 className="font-medium">{b.user?.name || 'Barbero'}</h3>
                   <p className="text-xs text-dk-gold mt-1 uppercase tracking-wider">{b.specialty || 'Master'}</p>
-                </div>
-              ))}
+                </motion.div>
+              )) : <p className="text-gray-500 italic">Cargando barberos...</p>}
             </div>
           </section>
 
@@ -196,14 +178,11 @@ function Reservas() {
             <div className="bg-[#111111] border border-gray-800 rounded-xl p-6">
               <p className="text-gray-400 text-sm mb-4">Horarios disponibles para hoy:</p>
               <div className="flex flex-wrap gap-3">
-                {['10:00 AM', '11:30 AM', '02:00 PM', '04:30 PM', '06:00 PM'].map((h, i) => (
+                {['10:00 AM', '02:00 PM', '06:00 PM'].map((h, i) => (
                   <button 
-                    key={i}
-                    onClick={() => setHora(h)}
+                    key={i} onClick={() => setHora(h)}
                     className={`px-6 py-2 rounded-full border text-sm transition-all duration-300 ${
-                      hora === h 
-                      ? 'bg-white text-black border-white font-bold transform scale-110' 
-                      : 'border-gray-700 text-gray-300 hover:border-white'
+                      hora === h ? 'bg-white text-black border-white font-bold transform scale-110' : 'border-gray-700 text-gray-300 hover:border-white'
                     }`}
                   >
                     {h}
@@ -215,7 +194,7 @@ function Reservas() {
 
         </motion.div>
 
-        {/* BOTÓN FINAL (Tu estilo original) */}
+        {/* BOTÓN FINAL */}
         <div className={`mt-12 text-center transition-all duration-500 ${hora ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
           <button 
             onClick={handleConfirmarReserva}
