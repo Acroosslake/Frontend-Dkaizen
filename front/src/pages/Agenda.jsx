@@ -1,29 +1,66 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import api from '../api/axios';
 
 function Agenda() {
   const navigate = useNavigate();
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      try {
+        const response = await api.get('/appointments');
+        setAppointments(Array.isArray(response.data) ? response.data : []);
+      } catch (error) {
+        console.error("Error al cargar la agenda:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAppointments();
+  }, []);
+
+  // FUNCIÓN CON EL TRUCO DE DEPURACIÓN
+  const handleComplete = async (id) => {
+    try {
+      const response = await api.put(`/appointments/${id}`, { status: 'completed' });
+      
+      // Si llegamos aquí, fue un éxito
+      setAppointments(prev => prev.map(app => 
+        app.id === id ? { ...app, status: 'completed' } : app
+      ));
+      alert("¡Cita completada con éxito!");
+
+    } catch (error) {
+      console.error("Error completo capturado:", error);
+      
+      // EL TRUCO: Extraemos el mensaje real del servidor
+      const mensajeError = error.response?.data?.message 
+                           || error.response?.data?.error 
+                           || "Error interno del servidor (500)";
+      
+      alert(`⚠️ Problema del Servidor: ${mensajeError}`);
+    }
+  };
+
+  const formatTime = (dateString) => {
+    if (!dateString) return "00:00";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    } catch (e) { return "00:00"; }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/');
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.15 } }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, x: -30 },
-    show: { opacity: 1, x: 0, transition: { duration: 0.5, ease: "easeOut" } }
-  };
-
   return (
-    <div className="min-h-screen bg-[#030303] text-white font-sans relative pt-28 px-4 md:px-12 pb-12">
+    <div className="min-h-screen bg-[#030303] text-white font-sans pt-28 px-4 md:px-12 pb-12">
       
-      {/* MENÚ FLOTANTE */}
       <nav className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-xl border border-dk-red/30 px-8 py-4 rounded-full flex items-center gap-8 md:gap-12 z-50 shadow-[0_10px_30px_rgba(189,0,3,0.15)]">
         <div className="text-2xl font-vogue text-dk-gold pr-6 border-r border-gray-800 hidden md:block">D'KAIZEN</div>
         <Link to="/dashboard" className="text-gray-400 hover:text-white transition">Panel</Link>
@@ -33,50 +70,59 @@ function Agenda() {
       </nav>
 
       <div className="max-w-7xl mx-auto">
-        <motion.header initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-12 border-b border-gray-900 pb-8 flex justify-between items-end">
+        <header className="mb-12 border-b border-gray-900 pb-8 flex justify-between items-end">
           <div>
             <p className="text-gray-500 uppercase tracking-[0.3em] text-xs font-bold mb-4">Gestión de Turnos</p>
             <h1 className="text-5xl md:text-7xl font-light text-gray-100">Citas <span className="font-vogue text-dk-gold italic">Activas</span></h1>
           </div>
-          <button className="bg-dk-red hover:bg-red-800 text-white px-6 py-2 rounded-full text-sm tracking-widest transition shadow-[0_0_15px_rgba(189,0,3,0.3)]">+ NUEVA CITA</button>
-        </motion.header>
+        </header>
 
-        {/* LÍNEA DE TIEMPO ANIMADA */}
-        <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6">
-          
-          <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-6 bg-[#0a0a0a] border border-gray-900 p-6 hover:border-dk-red/50 transition relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-dk-gold shadow-[0_0_10px_rgba(212,175,55,0.8)]"></div>
-            <div className="md:w-32 border-b md:border-b-0 md:border-r border-gray-800 pb-4 md:pb-0 flex flex-col justify-center">
-              <p className="text-3xl font-vogue text-white">14:00</p>
-              <p className="text-xs text-dk-gold uppercase tracking-widest">En curso</p>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-medium text-gray-200">Corte Premium + Perfilado</h3>
-              <p className="text-sm text-gray-400 mt-1">Cliente: Carlos Mendoza • Barbero: Julian V.</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-dk-gold font-bold tracking-widest">$45,000</span>
-              <button className="border border-dk-gold hover:bg-dk-gold text-dk-gold hover:text-black px-4 py-1 text-xs uppercase tracking-widest transition">Completar</button>
-            </div>
-          </motion.div>
+        {loading ? (
+          <div className="text-center py-20 text-gray-500 uppercase tracking-widest">Consultando agenda...</div>
+        ) : (
+          <div className="space-y-6">
+            {appointments.length > 0 ? appointments.map((cita) => (
+              <div key={cita.id} className="flex flex-col md:flex-row gap-6 bg-[#0a0a0a] border border-gray-900 p-6 relative overflow-hidden group">
+                <div className={`absolute top-0 left-0 w-1 h-full ${cita.status === 'completed' ? 'bg-green-500' : 'bg-dk-gold'}`}></div>
+                
+                <div className="md:w-32 border-b md:border-b-0 md:border-r border-gray-800 pb-4 md:pb-0 flex flex-col justify-center">
+                  <p className="text-3xl font-vogue text-white">{formatTime(cita.appointment_date)}</p>
+                  <p className="text-[10px] uppercase text-dk-gold tracking-widest mt-1">{cita.status || 'pendiente'}</p>
+                </div>
 
-          <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-6 bg-[#0a0a0a] border border-gray-900 p-6 hover:border-gray-700 transition relative overflow-hidden">
-             <div className="absolute top-0 left-0 w-1 h-full bg-gray-800"></div>
-            <div className="md:w-32 border-b md:border-b-0 md:border-r border-gray-800 pb-4 md:pb-0 flex flex-col justify-center">
-              <p className="text-3xl font-vogue text-gray-400">15:30</p>
-              <p className="text-xs text-gray-600 uppercase tracking-widest">Próxima</p>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-medium text-gray-400">Combo D'Kaizen</h3>
-              <p className="text-sm text-gray-500 mt-1">Cliente: Mateo Ruiz • Barbero: Alex R.</p>
-            </div>
-            <div className="flex items-center gap-4 opacity-50">
-              <span className="text-gray-400 font-bold tracking-widest">$55,000</span>
-              <button className="border border-gray-800 px-4 py-1 text-xs uppercase tracking-widest text-gray-500 cursor-not-allowed">Pendiente</button>
-            </div>
-          </motion.div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-medium text-gray-200">
+                    {cita.service?.name || "Servicio no especificado"}
+                  </h3>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Cliente: {cita.user?.name || "Anónimo"} • Barbero: {cita.barber?.user?.name || "No asignado"}
+                  </p>
+                </div>
 
-        </motion.div>
+                <div className="flex items-center gap-4">
+                  <span className="text-dk-gold font-bold tracking-widest">
+                    ${cita.service?.price ? parseInt(cita.service.price).toLocaleString() : '0'}
+                  </span>
+                  
+                  {cita.status !== 'completed' ? (
+                    <button 
+                      onClick={() => handleComplete(cita.id)}
+                      className="border border-dk-gold hover:bg-dk-gold text-dk-gold hover:text-black px-4 py-1 text-xs uppercase tracking-widest transition"
+                    >
+                      Completar
+                    </button>
+                  ) : (
+                    <div className="bg-green-500/10 text-green-500 px-4 py-1 text-xs uppercase border border-green-500/20">
+                      Finalizada
+                    </div>
+                  )}
+                </div>
+              </div>
+            )) : (
+              <div className="text-center py-20 text-gray-500 italic">No hay citas registradas.</div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
