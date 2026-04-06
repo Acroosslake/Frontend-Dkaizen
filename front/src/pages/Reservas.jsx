@@ -1,28 +1,86 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AuthContext } from '../context/AuthContext';
 
 function Reservas() {
   const [servicio, setServicio] = useState(null);
   const [barbero, setBarbero] = useState(null);
   const [hora, setHora] = useState(null);
+  
+  // Estado para el menú desplegable
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  
+  // Extraemos datos del cerebro (AuthContext)
+  const { user, logout } = useContext(AuthContext);
 
   return (
     <div className="min-h-screen bg-dk-dark text-white font-sans pb-20 relative">
       
-      {/* NAVBAR PÚBLICO */}
+      {/* NAVBAR PÚBLICO ACTUALIZADO */}
       <header className="pt-6 w-full flex justify-center relative z-50">
         <nav className="bg-dk-red/90 backdrop-blur-sm rounded-full w-[90%] max-w-5xl px-8 py-3 flex justify-between items-center shadow-2xl">
           <Link to="/" className="text-white font-vogue text-2xl tracking-widest">D'Kaizen</Link>
+          
           <ul className="hidden md:flex space-x-8 text-sm font-light text-white/90">
             <Link to="/" className="hover:text-dk-gold transition">Inicio</Link>
-            <Link to="/nosotros" className="hover:text-dk-gold transition">Nosotros</Link>
+            {/* Quitamos "Nosotros" porque ahora es sección del Home */}
             <Link to="/servicios" className="hover:text-dk-gold transition">Servicios</Link>
             <Link to="/reservas" className="text-dk-gold font-bold transition">Reservas</Link>
           </ul>
-          <Link to="/login" className="flex items-center space-x-2 bg-black/40 px-4 py-1.5 rounded-full hover:bg-black/60 transition">
-            <span className="text-sm">Iniciar Sesión</span>
-          </Link>
+          
+          {/* MENÚ DESPLEGABLE LIMPIO */}
+          {user ? (
+            <div className="relative">
+              <button 
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="flex items-center space-x-2 bg-dk-dark hover:bg-black px-4 py-1.5 rounded-full border border-dk-gold/50 transition-colors shadow-[0_0_10px_rgba(212,175,55,0.2)]"
+              >
+                <span className="text-sm font-bold text-dk-gold">
+                  Hola, {user.name ? user.name.split(' ')[0] : 'Jefe'}
+                </span>
+                <svg className={`w-4 h-4 text-dk-gold transition-transform duration-300 ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              </button>
+
+              <AnimatePresence>
+                {isMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="absolute right-0 mt-3 w-48 bg-[#111111] border border-gray-800 rounded-xl shadow-2xl py-2 overflow-hidden z-50"
+                  >
+                    {/* Solo aparece si eres Admin */}
+                    {user.role === 'admin' && (
+                      <Link to="/dashboard" className="block px-4 py-2 text-sm text-dk-gold font-bold hover:bg-gray-800 transition-colors">
+                        Panel Admin
+                      </Link>
+                    )}
+                    <Link to="/perfil" className="block px-4 py-2 text-sm text-gray-300 hover:bg-dk-red hover:text-white transition-colors">
+                      Mi Perfil
+                    </Link>
+                    <div className="border-t border-gray-800 my-1"></div>
+                    <button 
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        logout();
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500 hover:text-white transition-colors font-medium"
+                    >
+                      Cerrar Sesión
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <Link 
+              to="/login" 
+              className="flex items-center space-x-2 bg-black/40 px-4 py-1.5 rounded-full hover:bg-black/60 transition text-white border border-gray-700"
+            >
+              <span className="text-sm">Iniciar Sesión</span>
+            </Link>
+          )}
         </nav>
       </header>
 
@@ -45,7 +103,7 @@ function Reservas() {
           className="space-y-12"
         >
           
-          {/* PASO 1: SERVICIOS (Visual) */}
+          {/* PASO 1: SERVICIOS */}
           <section>
             <h2 className="text-xl font-light mb-6 flex items-center border-b border-gray-800 pb-2">
               <span className="text-dk-gold font-vogue text-2xl mr-3">01.</span> Selecciona un Servicio
@@ -75,7 +133,7 @@ function Reservas() {
             </div>
           </section>
 
-          {/* PASO 2: BARBEROS (Visual) */}
+          {/* PASO 2: BARBEROS */}
           <section className={`transition-all duration-500 ${servicio ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
             <h2 className="text-xl font-light mb-6 flex items-center border-b border-gray-800 pb-2">
               <span className="text-dk-gold font-vogue text-2xl mr-3">02.</span> Elige a tu Barbero
@@ -103,7 +161,7 @@ function Reservas() {
             </div>
           </section>
 
-          {/* PASO 3: FECHA Y HORA (Visual) */}
+          {/* PASO 3: FECHA Y HORA */}
           <section className={`transition-all duration-500 ${barbero ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
             <h2 className="text-xl font-light mb-6 flex items-center border-b border-gray-800 pb-2">
               <span className="text-dk-gold font-vogue text-2xl mr-3">03.</span> Fecha y Hora
