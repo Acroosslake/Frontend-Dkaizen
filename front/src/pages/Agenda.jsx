@@ -71,6 +71,7 @@ function Agenda() {
         <Link to="/dashboard" className="text-gray-400">Panel</Link>
         <Link to="/agenda" className="text-dk-red font-bold">Agenda</Link>
         <Link to="/staff" className="text-gray-400">Staff</Link>
+        <Link to="/users" className="text-gray-400 hover:text-white transition-colors">Usuarios</Link>
         <button onClick={() => { localStorage.removeItem('token'); navigate('/'); }} className="text-gray-500 ml-4 pl-4 border-l border-gray-800 hover:text-red-500">Salir</button>
       </nav>
 

@@ -19,8 +19,7 @@ function Home() {
           
           <ul className="hidden md:flex space-x-8 text-sm font-light text-white/90">
             <Link to="/" className="text-dk-gold font-bold transition">Inicio</Link>
-            <a href="#nosotros" className="hover:text-dk-gold transition">Nosotros</a>
-            <Link to="/servicios" className="hover:text-dk-gold transition">Servicios</Link>
+             <Link to="/servicios" className="hover:text-dk-gold transition">Servicios</Link>
             <Link to="/reservas" className="hover:text-dk-gold transition">Reservas</Link>
           </ul>
 

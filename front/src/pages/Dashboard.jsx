@@ -41,6 +41,7 @@ function Dashboard() {
         <Link to="/dashboard" className="text-dk-red font-bold transition">Panel</Link>
         <Link to="/agenda" className="text-gray-400 hover:text-white transition">Agenda</Link>
         <Link to="/staff" className="text-gray-400 hover:text-white transition">Staff</Link>
+        <Link to="/users" className="text-gray-400 hover:text-white transition-colors">Usuarios</Link>
         <button onClick={handleLogout} className="text-gray-500 hover:text-red-500 transition pl-6 border-l border-gray-800">
           Salir
         </button>

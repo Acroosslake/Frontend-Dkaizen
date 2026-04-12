@@ -102,6 +102,7 @@ function Staff() {
         <Link to="/dashboard" className="text-gray-400">Panel</Link>
         <Link to="/agenda" className="text-gray-400">Agenda</Link>
         <Link to="/staff" className="text-dk-red font-bold">Staff</Link>
+        <Link to="/users" className="text-gray-400 hover:text-white transition-colors">Usuarios</Link>
         <button onClick={() => { localStorage.removeItem('token'); navigate('/'); }} className="text-gray-500 hover:text-red-500">Salir</button>
       </nav>
 

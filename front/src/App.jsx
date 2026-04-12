@@ -6,9 +6,9 @@ import Dashboard from './pages/Dashboard';
 import Agenda from './pages/Agenda';
 import Staff from './pages/Staff';
 import Reservas from './pages/Reservas';
-// Quitamos Nosotros de aquí porque ya vive en el Home
+import Users from './pages/Users';
 import Servicios from './pages/Servicios'; 
-import Perfil from './pages/Perfil'; // 👈 ¡ESTA ERA LA QUE FALTABA!
+import Perfil from './pages/Perfil'; 
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 
@@ -37,6 +37,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/agenda" element={<Agenda />} />
         <Route path="/staff" element={<Staff />} />
+        <Route path="/users" element={<Users />} />
       </Route>
       
       {/* 404 */}
