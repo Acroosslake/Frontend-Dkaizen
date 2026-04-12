@@ -28,7 +28,7 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-[#030303] text-white font-sans relative pt-28 px-4 md:px-12 pb-12">
       
-      {/* MENÚ FLOTANTE SUPERIOR (DOCK) */}
+      {/* MENÚ FLOTANTE SUPERIOR (DOCK.) */}
       <motion.nav 
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
