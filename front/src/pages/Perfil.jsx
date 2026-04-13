@@ -1,15 +1,18 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AuthContext } from '../context/AuthContext';
 import api from '../api/axios';
+import { successAlert, errorAlert, confirmAction } from '../utils/alerts';
 
 function Perfil() {
   const { user, login } = useContext(AuthContext); 
   const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
-  const [status, setStatus] = useState({ type: '', msg: '' });
+  const [appointments, setAppointments] = useState([]); // 🚩 Estado para las citas
   const [loading, setLoading] = useState(false);
+  const [loadingAppos, setLoadingAppos] = useState(true);
 
+  // 1. Cargar datos del usuario y sus citas
   useEffect(() => {
     if (user) {
       setFormData({
@@ -17,43 +20,67 @@ function Perfil() {
         email: user.email || '',
         phone: user.phone || ''
       });
+      fetchMyAppointments();
     }
   }, [user]);
 
+  const fetchMyAppointments = async () => {
+    setLoadingAppos(true);
+    try {
+      const res = await api.get('/appointments');
+      // Filtramos para mostrar solo las que no han pasado o no están canceladas si prefieres
+      setAppointments(res.data);
+    } catch (e) {
+      console.error("Error cargando citas:", e);
+    } finally {
+      setLoadingAppos(false);
+    }
+  };
+
+  // 2. Lógica para Actualizar Perfil
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setStatus({ type: '', msg: '' });
-
     try {
-      // 1. Enviamos solo los datos permitidos (el email es mejor no tocarlo)
-      const response = await api.put('/user/update', {
+      await api.put('/user/update', {
         name: formData.name,
         phone: formData.phone
       });
       
-      // 2. Refrescamos la sesión en el frontend si es necesario
-      // Si tu backend no devuelve un nuevo token, usamos el que ya tenemos 
-      // para disparar el efecto de recarga de datos del AuthContext
       const currentToken = localStorage.getItem('token');
-      if (currentToken) {
-        await login(currentToken);
-      }
+      if (currentToken) await login(currentToken);
 
-      setStatus({ type: 'success', msg: '¡Perfil actualizado, fiera!' });
+      successAlert('¡PERFIL LISTO!', 'Tus datos se han actualizado correctamente.');
     } catch (error) {
-      console.error("Error detallado:", error.response);
-      
-      // Capturamos el mensaje de error real de Laravel (ej: si falla el 403 o validación)
-      const errorMsg = error.response?.data?.message || 'Hubo un error al actualizar los datos.';
-      setStatus({ type: 'error', msg: errorMsg });
+      errorAlert('¡ERROR!', error.response?.data?.message || 'No pudimos actualizar tu perfil.');
     } finally {
       setLoading(false);
     }
   };
 
+  // 3. Lógica para Cancelar Cita
+  const handleCancelarCita = async (id) => {
+    const res = await confirmAction(
+      '¿CANCELAR ESTA CITA?',
+      'Se liberará el espacio para otro cliente. Esta acción no se puede deshacer.',
+      'SÍ, CANCELAR'
+    );
+
+    if (res.isConfirmed) {
+      try {
+        await api.delete(`/appointments/${id}`);
+        successAlert('¡CANCELADA!', 'Tu cita ha sido eliminada con éxito.');
+        fetchMyAppointments(); // Recargamos la lista
+      } catch (e) {
+        errorAlert('ERROR', 'No pudimos cancelar la cita en este momento.');
+      }
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-dk-dark text-white font-sans pb-20 relative">
+    <div className="min-h-screen bg-[#030303] text-white font-sans pb-20 relative">
+      
+      {/* NAVBAR */}
       <header className="pt-6 w-full flex justify-center relative z-50">
         <nav className="bg-dk-red/90 backdrop-blur-sm rounded-full w-[90%] max-w-5xl px-8 py-3 flex justify-between items-center shadow-2xl">
           <Link to="/" className="text-white font-vogue text-2xl tracking-widest">D'Kaizen</Link>
@@ -68,41 +95,106 @@ function Perfil() {
         </nav>
       </header>
 
-      <main className="max-w-2xl mx-auto mt-20 px-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-[#111111] border border-gray-800 rounded-3xl p-8 shadow-2xl">
-          <div className="text-center mb-10">
-            <div className="w-24 h-24 bg-gradient-to-tr from-dk-red to-dk-gold rounded-full mx-auto mb-4 flex items-center justify-center text-3xl font-vogue shadow-lg">
-              {user?.name?.charAt(0).toUpperCase()}
+      <main className="max-w-6xl mx-auto mt-20 px-4 grid grid-cols-1 lg:grid-cols-3 gap-12">
+        
+        {/* SECCIÓN IZQUIERDA: FORMULARIO PERFIL */}
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="lg:col-span-1">
+          <div className="bg-[#0a0a0a] border border-gray-900 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-dk-gold/5 blur-3xl rounded-full"></div>
+            
+            <div className="text-center mb-8">
+              <div className="w-20 h-20 bg-gradient-to-tr from-dk-red to-dk-gold rounded-full mx-auto mb-4 flex items-center justify-center text-3xl font-vogue shadow-lg border-2 border-black">
+                {user?.name?.charAt(0).toUpperCase()}
+              </div>
+              <h1 className="text-2xl font-light">Mi <span className="font-vogue text-dk-gold italic">Perfil</span></h1>
+              <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Socio D'Kaizen</p>
             </div>
-            <h1 className="text-3xl font-light">Mi <span className="font-vogue text-dk-gold italic">Perfil</span></h1>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-gray-600 text-[10px] uppercase tracking-widest font-black mb-2 ml-2">Nombre</label>
+                <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full bg-black border border-gray-900 rounded-2xl px-5 py-4 text-sm focus:border-dk-gold outline-none transition" />
+              </div>
+
+              <div>
+                <label className="block text-gray-600 text-[10px] uppercase tracking-widest font-black mb-2 ml-2">WhatsApp</label>
+                <input type="text" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full bg-black border border-gray-900 rounded-2xl px-5 py-4 text-sm focus:border-dk-gold outline-none transition" />
+              </div>
+
+              <button type="submit" disabled={loading} className="w-full bg-white text-black font-black py-4 rounded-2xl text-[10px] uppercase tracking-[0.2em] hover:bg-dk-gold transition-all disabled:opacity-50">
+                {loading ? 'SINCRONIZANDO...' : 'ACTUALIZAR DATOS'}
+              </button>
+            </form>
+          </div>
+        </motion.div>
+
+        {/* SECCIÓN DERECHA: MIS CITAS AGENDADAS */}
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="lg:col-span-2">
+          <div className="flex justify-between items-end mb-8 px-4">
+             <div>
+                <p className="text-dk-red uppercase tracking-[0.3em] text-[10px] font-bold mb-1">Tu Agenda</p>
+                <h2 className="text-4xl font-light">Próximos <span className="font-vogue text-dk-gold italic">Turnos</span></h2>
+             </div>
+             <span className="text-[10px] text-gray-500 font-bold uppercase border-b border-gray-800 pb-1">
+                {appointments.length} Citas activas
+             </span>
           </div>
 
-          {status.msg && (
-            <div className={`mb-6 p-4 rounded-xl text-center text-sm ${status.type === 'success' ? 'bg-green-900/30 border border-green-500 text-green-200' : 'bg-red-900/30 border border-red-500 text-red-200'}`}>
-              {status.msg}
-            </div>
-          )}
+          <div className="space-y-6">
+            <AnimatePresence>
+              {loadingAppos ? (
+                <p className="text-center py-10 text-gray-600 animate-pulse uppercase text-xs tracking-widest">Consultando agenda...</p>
+              ) : appointments.length > 0 ? (
+                appointments.map((appo, index) => (
+                  <motion.div 
+                    key={appo.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="bg-[#0a0a0a] border border-gray-900 p-6 rounded-[2rem] flex flex-col md:flex-row justify-between items-center group hover:border-dk-gold/30 transition-all shadow-xl"
+                  >
+                    <div className="flex items-center gap-6 mb-4 md:mb-0">
+                      <div className="w-14 h-14 bg-gray-900 rounded-2xl flex flex-col items-center justify-center border border-gray-800 group-hover:border-dk-gold/50 transition-colors">
+                        <span className="text-dk-gold font-vogue text-xl leading-none">
+                          {new Date(appo.appointment_date).getDate()}
+                        </span>
+                        <span className="text-[8px] text-gray-500 uppercase font-black">
+                          {new Date(appo.appointment_date).toLocaleString('es-ES', { month: 'short' })}
+                        </span>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-200">{appo.service?.name}</h3>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 bg-dk-red rounded-full"></span>
+                          {appo.barber?.user?.name || 'Barbero D\'Kaizen'} • {new Date(appo.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-gray-500 text-xs uppercase tracking-widest font-bold mb-2">Nombre Completo</label>
-              <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full bg-[#0a0a0a] border border-gray-800 rounded-xl px-4 py-3 focus:border-dk-gold outline-none transition" />
-            </div>
-
-            <div>
-              <label className="block text-gray-500 text-xs uppercase tracking-widest font-bold mb-2">Correo Electrónico</label>
-              <input type="email" value={formData.email} disabled className="w-full bg-[#0a0a0a] border border-gray-700 rounded-xl px-4 py-3 text-gray-600 cursor-not-allowed" />
-            </div>
-
-            <div>
-              <label className="block text-gray-500 text-xs uppercase tracking-widest font-bold mb-2">Teléfono / WhatsApp</label>
-              <input type="text" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full bg-[#0a0a0a] border border-gray-800 rounded-xl px-4 py-3 focus:border-dk-gold outline-none transition" placeholder="Ej: +57 300..." />
-            </div>
-
-            <button type="submit" disabled={loading} className="w-full bg-dk-red hover:bg-red-800 text-white font-bold py-4 rounded-xl tracking-widest transition-all shadow-[0_0_15px_rgba(189,0,3,0.3)] disabled:opacity-50">
-              {loading ? 'GUARDANDO...' : 'GUARDAR CAMBIOS'}
-            </button>
-          </form>
+                    <div className="flex items-center gap-6">
+                      <div className="text-right hidden md:block">
+                        <p className="text-[9px] text-gray-600 uppercase font-black mb-1">Monto a Pagar</p>
+                        <p className="text-xl font-vogue text-white">${Number(appo.total_price).toLocaleString()}</p>
+                      </div>
+                      <button 
+                        onClick={() => handleCancelarCita(appo.id)}
+                        className="bg-red-500/10 text-red-500 px-6 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all border border-red-500/20"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </motion.div>
+                ))
+              ) : (
+                <div className="bg-[#0a0a0a] border border-dashed border-gray-800 rounded-[2.5rem] p-16 text-center">
+                   <p className="text-gray-600 uppercase text-xs tracking-[0.2em] mb-6">Aún no tienes cortes programados</p>
+                   <Link to="/reservas" className="text-dk-gold text-[10px] font-black uppercase tracking-widest border border-dk-gold/50 px-6 py-3 rounded-full hover:bg-dk-gold hover:text-black transition-all">
+                      Agendar mi primer turno
+                   </Link>
+                </div>
+              )}
+            </AnimatePresence>
+          </div>
         </motion.div>
       </main>
     </div>

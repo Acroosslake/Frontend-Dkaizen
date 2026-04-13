@@ -3,35 +3,67 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthContext } from '../context/AuthContext';
 import api from '../api/axios';
-// ✅ Importamos nuestras alertas personalizadas
 import { successAlert, errorAlert } from '../utils/alerts';
 
 function Reservas() {
   const navigate = useNavigate();
   const { user, logout } = useContext(AuthContext);
 
+  // --- ESTADOS DE DATOS ---
   const [serviciosDB, setServiciosDB] = useState([]);
   const [barberosDB, setBarberosDB] = useState([]);
+  const [occupiedSlots, setOccupiedSlots] = useState([]); // 🚩 Horas ya ocupadas
+  
+  // --- ESTADOS DE SELECCIÓN ---
   const [servicio, setServicio] = useState(null);
   const [barbero, setBarbero] = useState(null);
   const [hora, setHora] = useState(null);
+  
+  // --- ESTADOS DE UI ---
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Horarios base de la barbería
+  const totalSlots = ['10:00 AM', '11:00 AM', '12:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM', '06:00 PM'];
+
+  // 1. CARGA INICIAL (Servicios y Barberos)
   useEffect(() => {
     const fetchData = async () => {
       try {
         const resServ = await api.get('/services');
         setServiciosDB(Array.isArray(resServ.data) ? resServ.data : []);
-        try {
-          const resBarb = await api.get('/barbers');
-          setBarberosDB(Array.isArray(resBarb.data) ? resBarb.data : []);
-        } catch (e) { console.error("Error barberos:", e); }
-      } catch (e) { console.error("Error servicios:", e); }
+        const resBarb = await api.get('/barbers');
+        setBarberosDB(Array.isArray(resBarb.data) ? resBarb.data : []);
+      } catch (e) { console.error("Error al cargar datos iniciales:", e); }
     };
     fetchData();
   }, []);
 
+  // 2. BUSCAR DISPONIBILIDAD (Cuando cambia el barbero)
+  useEffect(() => {
+    if (barbero) {
+      const fetchOccupied = async () => {
+        const fechaHoy = new Date().toISOString().split('T')[0];
+        try {
+          const res = await api.get(`/appointments/occupied?barber_id=${barbero}&date=${fechaHoy}`);
+          setOccupiedSlots(res.data); // Recibimos array de horas: ["10:00", "14:00"]
+        } catch (e) { console.error("Error al chequear disponibilidad:", e); }
+      };
+      fetchOccupied();
+    }
+  }, [barbero]);
+
+  // 3. HELPER PARA CONVERTIR Y COMPARAR HORAS
+  const isSlotOccupied = (slotStr) => {
+    const [time, modifier] = slotStr.split(' ');
+    let [hours, minutes] = time.split(':');
+    if (modifier === 'PM' && hours !== '12') hours = parseInt(hours, 10) + 12;
+    if (modifier === 'AM' && hours === '12') hours = '00';
+    const formatted = `${String(hours).padStart(2, '0')}:${minutes}`;
+    return occupiedSlots.includes(formatted);
+  };
+
+  // 4. CONFIRMACIÓN DE RESERVA
   const handleConfirmarReserva = async () => {
     if (!servicio || !barbero || !hora) return;
     setLoading(true);
@@ -50,21 +82,10 @@ function Reservas() {
         appointment_date: appointment_date
       });
 
-      // 🔥 NOTIFICACIÓN DE ÉXITO ESTILO D'KAIZEN
-      await successAlert(
-        '¡RESERVA CONFIRMADA!',
-        'Tu espacio ha sido separado. Te esperamos para transformar tu estilo, fiera.'
-      );
-      
-      // Navegamos al perfil después de que el usuario cierre la alerta
+      await successAlert('¡RESERVA EXITOSA!', 'Tu turno ha sido bloqueado. ¡Te vemos pronto, fiera!');
       navigate('/perfil');
-
     } catch (error) {
-      // 🔥 NOTIFICACIÓN DE ERROR
-      errorAlert(
-        '¡UPSS!',
-        error.response?.data?.message || 'No pudimos agendar tu cita. Intenta con otro horario.'
-      );
+      errorAlert('¡ERROR!', error.response?.data?.message || 'No se pudo agendar.');
     } finally {
       setLoading(false);
     }
@@ -85,106 +106,103 @@ function Reservas() {
           
           {user ? (
             <div className="relative">
-              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="flex items-center space-x-2 bg-dk-dark hover:bg-black px-4 py-1.5 rounded-full border border-dk-gold/50 transition-colors shadow-[0_0_10px_rgba(212,175,55,0.2)]">
-                <span className="text-sm font-bold text-dk-gold">Hola, {user.name ? user.name.split(' ')[0] : 'Jefe'}</span>
-                <svg className={`w-4 h-4 text-dk-gold transition-transform duration-300 ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="flex items-center space-x-2 bg-dk-dark hover:bg-black px-4 py-1.5 rounded-full border border-dk-gold/50 transition-colors">
+                <span className="text-sm font-bold text-dk-gold">Hola, {user.name?.split(' ')[0]}</span>
+                <svg className={`w-4 h-4 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
               <AnimatePresence>
                 {isMenuOpen && (
-                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute right-0 mt-3 w-48 bg-[#111111] border border-gray-800 rounded-xl shadow-2xl py-2 overflow-hidden z-50">
-                    {user.role === 'admin' && <Link to="/dashboard" className="block px-4 py-2 text-sm text-dk-gold font-bold hover:bg-gray-800 transition-colors">Panel Admin</Link>}
-                    <Link to="/perfil" className="block px-4 py-2 text-sm text-gray-300 hover:bg-dk-red hover:text-white transition-colors">Mi Perfil</Link>
-                    <div className="border-t border-gray-800 my-1"></div>
-                    <button onClick={logout} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500 hover:text-white transition-colors font-medium">Cerrar Sesión</button>
+                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute right-0 mt-3 w-48 bg-[#111] border border-gray-800 rounded-xl py-2 z-50 shadow-2xl">
+                    <Link to="/perfil" className="block px-4 py-2 text-sm text-gray-300 hover:bg-dk-red hover:text-white transition-colors">Mi Perfil / Mis Citas</Link>
+                    <button onClick={logout} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-800 transition-colors">Cerrar Sesión</button>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
           ) : (
-            <Link to="/login" className="bg-black/40 px-4 py-1.5 rounded-full hover:bg-black/60 transition text-white border border-gray-700 text-sm">Iniciar Sesión</Link>
+            <Link to="/login" className="bg-black/40 px-4 py-1.5 rounded-full border border-gray-700 text-sm">Iniciar Sesión</Link>
           )}
         </nav>
       </header>
 
-      {/* CONTENIDO PRINCIPAL */}
       <main className="max-w-4xl mx-auto mt-16 px-4">
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-12">
+        <div className="text-center mb-12">
           <p className="text-dk-red uppercase tracking-[0.3em] text-xs font-bold mb-4">Agenda tu espacio</p>
-          <h1 className="text-5xl md:text-6xl font-light">Reserva tu <span className="font-vogue text-dk-gold italic">Experiencia</span></h1>
-        </motion.div>
+          <h1 className="text-5xl md:text-6xl font-light italic">Reserva tu <span className="font-vogue text-dk-gold not-italic">Experiencia</span></h1>
+        </div>
 
-        <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }} className="space-y-12">
-          
+        <div className="space-y-12">
+          {/* PASO 1: SERVICIOS */}
           <section>
             <h2 className="text-xl font-light mb-6 flex items-center border-b border-gray-800 pb-2">
-              <span className="text-dk-gold font-vogue text-2xl mr-3">01.</span> Selecciona un Servicio
+              <span className="text-dk-gold font-vogue text-2xl mr-3">01.</span> Servicio
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {serviciosDB.map((s) => (
-                <motion.div 
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} key={s.id}
-                  onClick={() => setServicio(s.id)}
-                  className={`p-6 border rounded-xl cursor-pointer transition-all duration-300 ${servicio === s.id ? 'border-dk-gold bg-dk-gold/10 shadow-[0_0_15px_rgba(212,175,55,0.2)]' : 'border-gray-800 bg-[#111111] hover:border-gray-500'}`}
-                >
-                  <h3 className="font-medium text-lg mb-2">{s.name}</h3>
-                  <div className="flex justify-between text-sm text-gray-400">
-                    <span className="text-white font-bold">${s.price}</span>
-                    <span>⏱ {s.duration} min</span>
-                  </div>
-                </motion.div>
+                <div key={s.id} onClick={() => setServicio(s.id)} className={`p-6 border rounded-xl cursor-pointer transition-all ${servicio === s.id ? 'border-dk-gold bg-dk-gold/10' : 'border-gray-800 bg-[#111] hover:border-gray-600'}`}>
+                  <h3 className="font-bold">{s.name}</h3>
+                  <p className="text-sm text-gray-400 mt-2">${s.price} • {s.duration} min</p>
+                </div>
               ))}
             </div>
           </section>
 
-          <section className={`transition-all duration-500 ${servicio ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
+          {/* PASO 2: BARBEROS */}
+          <section className={`transition-all duration-500 ${servicio ? 'opacity-100' : 'opacity-20 pointer-events-none'}`}>
             <h2 className="text-xl font-light mb-6 flex items-center border-b border-gray-800 pb-2">
-              <span className="text-dk-gold font-vogue text-2xl mr-3">02.</span> Elige a tu Barbero
+              <span className="text-dk-gold font-vogue text-2xl mr-3">02.</span> Barbero
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {barberosDB.map((b) => (
-                <motion.div 
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} key={b.id}
-                  onClick={() => setBarbero(b.id)}
-                  className={`p-4 border rounded-xl text-center cursor-pointer transition-all duration-300 ${barbero === b.id ? 'border-dk-red bg-dk-red/10' : 'border-gray-800 bg-[#111111] hover:border-gray-500'}`}
-                >
-                  <div className="w-12 h-12 mx-auto bg-gray-800 rounded-full mb-3 border border-gray-600 overflow-hidden">
-                    <img src={b.image || 'https://via.placeholder.com/150'} alt="Barbero" className="w-full h-full object-cover" />
-                  </div>
-                  <h3 className="font-medium">{b.user?.name || 'Barbero'}</h3>
-                  <p className="text-xs text-dk-gold mt-1 uppercase tracking-wider">{b.specialty || 'Master'}</p>
-                </motion.div>
+                <div key={b.id} onClick={() => { setBarbero(b.id); setHora(null); }} className={`p-4 border rounded-xl text-center cursor-pointer transition-all ${barbero === b.id ? 'border-dk-red bg-dk-red/10' : 'border-gray-800 bg-[#111] hover:border-gray-600'}`}>
+                   <h3 className="font-medium text-sm">{b.user?.name}</h3>
+                   <p className="text-[10px] text-dk-gold uppercase mt-1">{b.specialty}</p>
+                </div>
               ))}
             </div>
           </section>
 
-          <section className={`transition-all duration-500 ${barbero ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
+          {/* PASO 3: HORARIOS REALES */}
+          <section className={`transition-all duration-500 ${barbero ? 'opacity-100' : 'opacity-20 pointer-events-none'}`}>
             <h2 className="text-xl font-light mb-6 flex items-center border-b border-gray-800 pb-2">
-              <span className="text-dk-gold font-vogue text-2xl mr-3">03.</span> Fecha y Hora
+              <span className="text-dk-gold font-vogue text-2xl mr-3">03.</span> Horario para hoy
             </h2>
-            <div className="bg-[#111111] border border-gray-800 rounded-xl p-6">
+            <div className="bg-[#111] border border-gray-800 rounded-2xl p-8 shadow-inner">
               <div className="flex flex-wrap gap-3">
-                {['10:00 AM', '02:00 PM', '06:00 PM'].map((h, i) => (
-                  <button 
-                    key={i} onClick={() => setHora(h)}
-                    className={`px-6 py-2 rounded-full border text-sm transition-all duration-300 ${hora === h ? 'bg-white text-black border-white font-bold transform scale-110' : 'border-gray-700 text-gray-300 hover:border-white'}`}
-                  >
-                    {h}
-                  </button>
-                ))}
+                {totalSlots.map((h, i) => {
+                  const busy = isSlotOccupied(h);
+                  return (
+                    <button 
+                      key={i} 
+                      disabled={busy}
+                      onClick={() => setHora(h)}
+                      className={`px-6 py-2 rounded-full border text-xs transition-all ${
+                        busy 
+                          ? 'opacity-10 cursor-not-allowed border-transparent bg-gray-900 line-through' 
+                          : hora === h 
+                            ? 'bg-white text-black border-white font-black scale-105 shadow-lg' 
+                            : 'border-gray-700 text-gray-400 hover:border-white hover:text-white'
+                      }`}
+                    >
+                      {h} {busy && '• Ocupado'}
+                    </button>
+                  );
+                })}
               </div>
+              <p className="text-[10px] text-gray-600 mt-6 uppercase tracking-widest text-center">Selecciona un horario disponible para confirmar</p>
             </div>
           </section>
+        </div>
 
-        </motion.div>
-
-        <div className={`mt-12 text-center transition-all duration-500 ${hora ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
+        <div className={`mt-12 text-center transition-all ${hora ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
           <button 
             onClick={handleConfirmarReserva}
             disabled={loading}
-            className="bg-dk-red hover:bg-red-800 text-white font-bold py-4 px-12 rounded-full tracking-wide transition-all duration-300 transform hover:scale-105 shadow-[0_0_20px_rgba(189,0,3,0.6)] text-lg disabled:opacity-50"
+            className="bg-dk-red hover:bg-red-800 text-white font-black py-5 px-16 rounded-full tracking-widest transition-all transform hover:scale-105 shadow-2xl disabled:opacity-50"
           >
-            {loading ? 'RESERVANDO...' : 'CONFIRMAR RESERVA'}
+            {loading ? 'SINCRONIZANDO...' : 'CONFIRMAR MI TURNO'}
           </button>
+          <p className="mt-4 text-[10px] text-gray-500 uppercase">Al confirmar, aceptas nuestra política de inasistencias.</p>
         </div>
       </main>
     </div>
