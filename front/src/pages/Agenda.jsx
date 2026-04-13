@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
-import { successAlert, errorAlert } from '../utils/alerts';
+// ✅ Asegúrate de importar confirmAction
+import { successAlert, errorAlert, confirmAction } from '../utils/alerts';
 
 function Agenda() {
   const navigate = useNavigate();
@@ -32,12 +33,35 @@ function Agenda() {
     }
   };
 
-  const handleComplete = async (id) => {
+  // ✅ NUEVO: COMPLETAR CON LÓGICA DE DEUDA
+  const handleComplete = async (cita) => {
+    let clear_debt = false;
+
+    // Si el cliente tiene multa, frenamos al admin y le preguntamos
+    if (cita.user?.penalty_fee > 0) {
+      const res = await confirmAction(
+        '⚠️ DEUDA PENDIENTE',
+        `Este cliente tiene una multa de $${Number(cita.user.penalty_fee).toLocaleString()}. Al confirmar, se registrará el corte como pagado y su deuda quedará en $0. ¿Cobraste todo?`,
+        'Sí, Cobrar Todo'
+      );
+      
+      // Si el admin cancela o cierra la alerta, abortamos el proceso
+      if (!res.isConfirmed) return; 
+      
+      // Si confirma, activamos la orden para limpiar la deuda
+      clear_debt = true; 
+    }
+
     try {
-      await api.put(`/appointments/${id}`, { status: 'completed' });
-      successAlert('¡ÉXITO!', 'Servicio finalizado correctamente');
+      await api.put(`/appointments/${cita.id}`, { 
+        status: 'completed',
+        clear_debt: clear_debt // Le mandamos la orden al backend
+      });
+      successAlert('¡COMPLETADO!', clear_debt ? 'Corte finalizado y deuda saldada.' : 'Servicio finalizado correctamente.');
       fetchAppointments();
-    } catch (error) { errorAlert('Error', 'No se pudo completar'); }
+    } catch (error) { 
+      errorAlert('Error', 'No se pudo completar el servicio.'); 
+    }
   };
 
   const handleNoShowSubmit = async (e) => {
@@ -99,8 +123,8 @@ function Agenda() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           
-          {/* CALENDARIO */}
-          <div className="lg:col-span-1 bg-[#0a0a0a] border border-gray-900 rounded-3xl p-8 shadow-2xl">
+          {/* ✅ CALENDARIO (Con self-start para evitar que se estire) */}
+          <div className="lg:col-span-1 self-start bg-[#0a0a0a] border border-gray-900 rounded-3xl p-8 shadow-2xl">
             <div className="flex justify-between items-center mb-8">
               <button onClick={() => setCurrentDate(new Date(year, month - 1))} className="text-dk-gold text-xl">←</button>
               <h2 className="text-xl font-vogue text-white">{monthNames[month]} {year}</h2>
@@ -163,7 +187,8 @@ function Agenda() {
                       <span className="font-bold text-dk-gold text-lg">${parseInt(cita.service?.price || 0).toLocaleString()}</span>
                       {cita.status !== 'completed' && cita.status !== 'no-show' && (
                         <div className="flex gap-2">
-                            <button onClick={() => handleComplete(cita.id)} 
+                            {/* ✅ NOTA: Pasamos todo el objeto 'cita' en lugar de solo el ID */}
+                            <button onClick={() => handleComplete(cita)} 
                                 className="bg-dk-gold text-black text-[9px] font-black px-4 py-2 uppercase rounded-lg hover:bg-white transition-all">
                                 Completar
                             </button>

@@ -13,6 +13,8 @@ import Inventory from './pages/Inventory'; // ✅ Nueva: Almacén
 import Perfil from './pages/Perfil'; 
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Register from './pages/Register';
+
 
 function App() {
   return (
@@ -23,7 +25,8 @@ function App() {
       <Route path="/servicios" element={<Servicios />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/restablecer-contrasena" element={<ResetPassword />} />
-
+      <Route path="/register" element={<Register />} />
+      
       {/* 🔵 RUTA DE PERFIL (Protegida para ambos roles) */}
       <Route element={<ProtectedRoute allowedRoles={['admin', 'client']} />}>
         <Route path="/perfil" element={<Perfil />} />
