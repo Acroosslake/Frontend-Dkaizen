@@ -1,29 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import api from '../api/axios';
 import { successAlert, errorAlert, confirmAction } from '../utils/alerts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext'; // 🌟 Importamos tu cerebro de autenticación
 
 function Users() {
   const navigate = useNavigate();
+  const { user: currentUser, logout } = useContext(AuthContext); // 🌟 Usamos el usuario global
+  
   const [users, setUsers] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null); 
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState(''); 
   const [editingUser, setEditingUser] = useState(null);
   const [formData, setFormData] = useState({ name: '', email: '', role: 'client' });
 
+  // 1. OBTENER USUARIOS
   const fetchData = async () => {
     try {
-      const [resUsers, resMe] = await Promise.all([
-        api.get('/users'),
-        api.get('/me')
-      ]);
+      const resUsers = await api.get('/users');
       setUsers(resUsers.data);
-      setCurrentUser(resMe.data);
       setLoading(false);
     } catch (e) {
-      errorAlert('Error', 'No se pudo sincronizar la base de datos.');
+      console.error("Error de sincronización:", e);
+      // 🛡️ Si el token es inválido o expiró (Error 401), lo deslogueamos por seguridad
+      if (e.response?.status === 401) {
+         logout();
+      } else {
+         errorAlert('Error de Conexión', 'No se pudo cargar la lista de usuarios.');
+      }
       setLoading(false);
     }
   };
@@ -35,29 +40,36 @@ function Users() {
     u.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // 2. ACTUALIZAR USUARIO
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      await api.put(`/users/${editingUser.id}`, formData);
-      successAlert('¡ACTUALIZADO!', 'Los cambios se guardaron correctamente.');
+      const res = await api.put(`/users/${editingUser.id}`, formData);
+      await successAlert('¡ACTUALIZADO!', res.data.message || 'Los cambios se guardaron correctamente.');
       setEditingUser(null);
       fetchData();
-    } catch (e) { errorAlert('Error', 'No se pudo actualizar el usuario.'); }
+    } catch (e) { 
+      // 🌟 AHORA MUESTRA EL ERROR REAL DEL BACKEND
+      errorAlert('Error', e.response?.data?.message || 'No se pudo actualizar el usuario.'); 
+    }
   };
 
+  // 3. BORRAR USUARIO
   const handleDelete = async (id, name) => {
     const result = await confirmAction('¿ELIMINAR USUARIO?', `¿Estás seguro de borrar a ${name}?`, 'SÍ, BORRAR');
     if (result.isConfirmed) {
       try {
-        await api.delete(`/users/${id}`);
-        successAlert('BORRADO', 'Usuario eliminado del sistema.');
+        const res = await api.delete(`/users/${id}`);
+        await successAlert('BORRADO', res.data.message || 'Usuario eliminado del sistema.');
         fetchData();
-      } catch (e) { errorAlert('ERROR', 'No se pudo eliminar.'); }
+      } catch (e) { 
+        // 🌟 AHORA MUESTRA EL ERROR REAL DEL BACKEND (Ej: "No puedes borrarte a ti mismo")
+        errorAlert('ERROR', e.response?.data?.message || 'No se pudo eliminar.'); 
+      }
     }
   };
 
   return (
-    // Animación de entrada de toda la página
     <motion.div 
       initial={{ opacity: 0 }} 
       animate={{ opacity: 1 }} 
@@ -94,7 +106,7 @@ function Users() {
           </div>
         </div>
 
-        {/* TABLA DE USUARIOS CON ANIMACIÓN DE FILAS */}
+        {/* TABLA DE USUARIOS */}
         <div className="bg-[#0a0a0a] border border-gray-900 rounded-[2.5rem] overflow-hidden shadow-2xl">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -114,13 +126,13 @@ function Users() {
                     key={user.id}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }} // EFECTO CASCADA
+                    transition={{ delay: index * 0.05 }}
                     className={`border-b border-gray-900/50 transition-colors ${isMe ? 'bg-dk-gold/5' : 'hover:bg-white/[0.01]'}`}
                   >
                     <td className="p-6">
                       <div className="flex items-center gap-4">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[11px] font-bold border ${isMe ? 'bg-dk-gold text-black border-dk-gold' : 'bg-gray-800 text-gray-400 border-gray-700'}`}>
-                          {user.name.charAt(0)}
+                          {user.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="flex flex-col">
                           <span className="text-sm font-medium flex items-center gap-2">
