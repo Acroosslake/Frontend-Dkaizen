@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AuthContext } from '../context/AuthContext';
@@ -20,27 +20,33 @@ function Dashboard() {
   const navigate = useNavigate();
   const { logout } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [stats, setStats] = useState({
     ingresos: 0,
+    ingresosMes: 0, // ✅ Nuevo campo
     citas: 0,
-    alertas: 0,
     movimientos: [],
     grafica: []
   });
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await api.get('/stats');
-        setStats(res.data);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error cargando el comando central:", error);
-        setLoading(false);
-      }
-    };
-    fetchStats();
+  // Extraemos la carga a una función reutilizable
+  const fetchStats = useCallback(async () => {
+    setIsSyncing(true);
+    try {
+      const res = await api.get('/stats');
+      setStats(res.data);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error cargando el comando central:", error);
+      setLoading(false);
+    } finally {
+      setIsSyncing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   const chartData = {
     labels: stats.grafica.map(d => d.fecha),
@@ -74,7 +80,6 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-[#030303] text-white font-sans relative pt-28 px-4 md:px-12 pb-12">
       
-      {/* MENÚ FLOTANTE (DOCK) */}
       <motion.nav 
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -90,19 +95,29 @@ function Dashboard() {
 
       <div className="max-w-7xl mx-auto">
         
-        {/* HEADER SIN FLECHA (SOLO TÍTULO) */}
         <motion.header 
           initial={{ opacity: 0, x: -30 }}
           animate={{ opacity: 1, x: 0 }}
-          className="mb-16 border-b border-dk-red/20 pb-8"
+          className="mb-16 border-b border-dk-red/20 pb-8 flex justify-between items-end"
         >
-          <p className="text-dk-red uppercase tracking-[0.3em] text-[10px] font-bold mb-4 ml-1">Comando Central</p>
-          <h1 className="text-5xl md:text-7xl font-light">
-            Visión <span className="font-vogue text-dk-gold italic">General</span>
-          </h1>
+          <div>
+            <p className="text-dk-red uppercase tracking-[0.3em] text-[10px] font-bold mb-4 ml-1">Comando Central</p>
+            <h1 className="text-5xl md:text-7xl font-light">
+              Visión <span className="font-vogue text-dk-gold italic">General</span>
+            </h1>
+          </div>
+
+          {/* ✅ BOTÓN DE SINCRONIZACIÓN */}
+          <button 
+            onClick={fetchStats}
+            disabled={isSyncing}
+            className={`mb-2 p-4 bg-gray-900/40 border border-gray-800 rounded-2xl hover:border-dk-gold transition-all flex items-center gap-3 group ${isSyncing ? 'opacity-50' : ''}`}
+          >
+            <span className={`text-dk-gold text-lg ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`}>↻</span>
+            <span className="text-[10px] uppercase tracking-widest text-gray-400 group-hover:text-white font-bold hidden md:block">Sincronizar</span>
+          </button>
         </motion.header>
 
-        {/* NÚMEROS REALES */}
         <motion.div 
           variants={containerVariants}
           initial="hidden"
@@ -119,17 +134,19 @@ function Dashboard() {
             <p className="text-gray-500 uppercase tracking-widest text-[10px] mb-4">Citas Activas</p>
             <p className="text-6xl md:text-7xl font-vogue text-white">{stats.citas}</p>
           </motion.div>
-          <motion.div variants={itemVariants} className="border-l border-dk-red/50 pl-6 relative">
-            <div className="absolute top-0 left-0 w-1 h-full bg-dk-red shadow-[0_0_15px_rgba(189,0,3,0.5)]"></div>
-            <p className="text-gray-500 uppercase tracking-widest text-[10px] mb-4">Alertas de Staff</p>
-            <p className="text-6xl md:text-7xl font-vogue text-red-500">{stats.alertas.toString().padStart(2, '0')}</p>
+
+          {/* ✅ CAMBIO: INGRESOS MENSUALES EN LUGAR DE ALERTAS */}
+          <motion.div variants={itemVariants} className="border-l border-dk-gold/50 pl-6 relative">
+            <div className="absolute top-0 left-0 w-1 h-full bg-dk-gold shadow-[0_0_15px_rgba(212,175,55,0.4)]"></div>
+            <p className="text-gray-500 uppercase tracking-widest text-[10px] mb-4">Ingresos Mensuales</p>
+            <p className="text-6xl md:text-7xl font-vogue text-dk-gold">
+              ${(stats.ingresosMes / 1000).toFixed(1)}K
+            </p>
           </motion.div>
         </motion.div>
 
-        {/* SECCIÓN DE DATOS Y GRÁFICA */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           
-          {/* ÚLTIMOS MOVIMIENTOS */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="bg-[#0a0a0a] border border-gray-900 rounded-3xl p-8 shadow-2xl">
              <h2 className="text-xl font-light mb-8 flex items-center text-gray-200 uppercase tracking-tighter">
                <span className="w-8 h-px bg-dk-red mr-4"></span> Últimos Movimientos
@@ -156,7 +173,6 @@ function Dashboard() {
              </button>
           </motion.div>
 
-          {/* RENDIMIENTO SEMANAL REAL */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="bg-[#0a0a0a] border border-gray-900 rounded-3xl p-8 shadow-2xl">
              <h2 className="text-xl font-light mb-10 flex items-center text-gray-200 uppercase tracking-tighter">
                <span className="w-8 h-px bg-dk-gold mr-4"></span> Rendimiento Semanal
