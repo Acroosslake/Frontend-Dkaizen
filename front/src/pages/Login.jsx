@@ -1,9 +1,9 @@
-// src/pages/Login.jsx
-import React, { useState, useContext } from 'react'; // 1. Añadimos useContext
+import React, { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useGoogleLogin } from '@react-oauth/google';
-import { AuthContext } from '../context/AuthContext'; // 2. Importamos el cerebro
+import { AuthContext } from '../context/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -12,7 +12,6 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   
-  // 3. Extraemos la función mágica login de tu contexto
   const { login } = useContext(AuthContext);
 
   const handleLogin = async (e) => {
@@ -26,15 +25,13 @@ function Login() {
         password: password
       });
 
-      // 4. USAMOS LA FUNCIÓN DEL CONTEXTO (No localStorage manual)
       await login(response.data.token);
       
-      // 5. Redirigimos según el rol
       const userRole = response.data.user.role;
       if (userRole === 'admin') {
           navigate('/dashboard');
       } else {
-          navigate('/reservas'); // Los clientes van aquí
+          navigate('/reservas'); 
       }
 
     } catch (err) {
@@ -54,22 +51,20 @@ function Login() {
           token: tokenResponse.access_token
         });
 
-        // 6. USAMOS LA FUNCIÓN DEL CONTEXTO PARA GOOGLE TAMBIÉN
         await login(response.data.token);
         
-        // 7. Redirigimos según el rol del usuario de Google
         const userRole = response.data.user.role;
         if (userRole === 'admin') {
             navigate('/dashboard');
         } else {
-            navigate('/reservas'); // Por defecto, los de Google serán clientes
+            navigate('/reservas'); 
         }
 
       } catch (err) {
         console.error("Error en backend al validar Google:", err);
         setError('Error al conectar tu cuenta de Google con nuestro servidor.');
       } finally {
-        setLoading(false); // Faltaba esto para desbloquear el botón si falla
+        setLoading(false); 
       }
     },
     onError: () => {
@@ -78,24 +73,48 @@ function Login() {
   });
 
   return (
-    <div className="min-h-screen bg-dk-dark flex items-center justify-center px-4 relative">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-dk-red/20 via-dk-dark to-dk-dark opacity-50 z-0"></div>
+    <div className="min-h-screen bg-[#030303] text-white font-sans flex items-center justify-center px-4 relative overflow-hidden selection:bg-dk-gold selection:text-black py-10">
       
-      <div className="bg-[#222222] p-8 rounded-2xl shadow-2xl w-full max-w-md border border-gray-800 z-10">
-        <div className="text-center mb-8">
-          <h2 className="text-4xl font-vogue text-dk-gold tracking-widest mb-2">D'KAIZEN</h2>
-          <p className="text-gray-400 text-sm font-light">Acceso a tu cuenta</p>
+      {/* 🌟 IMAGEN DE FONDO ATMOSFÉRICA */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30 mix-blend-luminosity scale-105"
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=2070&auto=format&fit=crop')" }} 
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#030303] via-[#030303]/80 to-[#030303]/40"></div>
+        {/* Luces sutiles */}
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-dk-red/10 blur-[120px] rounded-full"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-dk-gold/5 blur-[120px] rounded-full"></div>
+      </div>
+
+      {/* 🌟 CONTENEDOR DEL FORMULARIO (GLASSMORPHISM) */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+        className="relative z-10 bg-[#0a0a0a]/80 backdrop-blur-2xl p-8 md:p-12 rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-full max-w-md border border-gray-800/50 my-auto"
+      >
+        <div className="text-center mb-10">
+          <p className="text-dk-red uppercase tracking-[0.4em] text-[9px] font-bold mb-3">Bienvenido de vuelta</p>
+          <h2 className="text-5xl font-vogue text-dk-gold tracking-widest drop-shadow-lg">D'KAIZEN</h2>
         </div>
 
-        {error && (
-          <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded mb-4 text-sm text-center">
-            {error}
-          </div>
-        )}
+        <AnimatePresence>
+          {error && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }} 
+              animate={{ opacity: 1, height: 'auto' }} 
+              exit={{ opacity: 0, height: 0 }}
+              className="bg-red-900/20 border border-red-500/50 text-red-400 px-4 py-3 rounded-2xl mb-6 text-xs text-center font-medium"
+            >
+              {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <form onSubmit={handleLogin} className="space-y-5">
+        <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label className="block text-gray-300 text-sm font-medium mb-2" htmlFor="email">
+            <label className="block text-[10px] uppercase tracking-[0.2em] text-gray-500 font-black mb-2 ml-2" htmlFor="email">
               Correo Electrónico
             </label>
             <input
@@ -104,13 +123,13 @@ function Login() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 bg-[#111111] border border-gray-700 rounded-lg focus:outline-none focus:border-dk-red focus:ring-1 focus:ring-dk-red text-white transition-colors"
+              className="w-full px-5 py-4 bg-[#111111] border border-gray-800 rounded-2xl focus:outline-none focus:border-dk-gold text-sm text-white transition-all placeholder-gray-700"
               placeholder="admin@dkaizen.com"
             />
           </div>
 
           <div>
-            <label className="block text-gray-300 text-sm font-medium mb-2" htmlFor="password">
+            <label className="block text-[10px] uppercase tracking-[0.2em] text-gray-500 font-black mb-2 ml-2" htmlFor="password">
               Contraseña
             </label>
             <input
@@ -119,14 +138,13 @@ function Login() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-[#111111] border border-gray-700 rounded-lg focus:outline-none focus:border-dk-red focus:ring-1 focus:ring-dk-red text-white transition-colors"
+              className="w-full px-5 py-4 bg-[#111111] border border-gray-800 rounded-2xl focus:outline-none focus:border-dk-gold text-sm text-white transition-all placeholder-gray-700"
               placeholder="••••••••"
             />
-            {/* BOTÓN DE OLVIDÉ MI CONTRASEÑA */}
-            <div className="flex justify-end mt-2">
+            <div className="flex justify-end mt-3 mr-2">
               <Link 
                 to="/forgot-password" 
-                className="text-[10px] uppercase tracking-[0.2em] text-gray-500 hover:text-dk-gold transition-colors font-bold"
+                className="text-[9px] uppercase tracking-[0.2em] text-gray-500 hover:text-dk-gold transition-colors font-bold"
               >
                 ¿Olvidaste tu contraseña?
               </Link>
@@ -136,30 +154,30 @@ function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-dk-red hover:bg-red-800 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 shadow-[0_0_10px_rgba(189,0,3,0.3)] disabled:opacity-50 mt-2"
+            className="w-full bg-dk-red hover:bg-red-800 text-white font-black py-4 rounded-2xl text-[10px] uppercase tracking-[0.3em] transition-all duration-300 shadow-[0_0_20px_rgba(189,0,3,0.3)] disabled:opacity-50 mt-4 transform hover:scale-[1.02]"
           >
-            {loading ? 'Iniciando sesión...' : 'INGRESAR'}
+            {loading ? 'AUTENTICANDO...' : 'INGRESAR'}
           </button>
         </form>
 
-        <div className="mt-6">
+        <div className="mt-8">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-700"></div>
+              <div className="w-full border-t border-gray-800"></div>
             </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-[#222222] text-gray-500">O continuar con</span>
+            <div className="relative flex justify-center text-[9px] uppercase tracking-[0.2em] font-bold">
+              <span className="px-4 bg-[#0a0a0a] text-gray-600">Acceso Rápido</span>
             </div>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-8">
             <button
               onClick={() => handleGoogleLogin()}
               type="button"
               disabled={loading}
-              className="w-full flex items-center justify-center space-x-3 bg-white hover:bg-gray-100 text-gray-900 font-bold py-3 px-4 rounded-lg transition-all duration-300 shadow-md disabled:opacity-50"
+              className="w-full flex items-center justify-center space-x-3 bg-white hover:bg-gray-200 text-black font-black py-4 rounded-2xl text-[10px] uppercase tracking-[0.2em] transition-all duration-300 shadow-xl disabled:opacity-50 transform hover:scale-[1.02]"
             >
-              <svg className="h-5 w-5" viewBox="0 0 24 24">
+              <svg className="h-4 w-4" viewBox="0 0 24 24">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
                 <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
@@ -170,13 +188,20 @@ function Login() {
           </div>
         </div>
 
-        <div className="mt-6 text-center text-sm text-gray-500">
-          ¿No tienes una cuenta?{' '}
-          <Link to="/" className="text-dk-gold hover:text-yellow-400 transition-colors">
-            Volver al inicio
+        {/* ✅ AQUÍ ESTÁ EL BOTÓN DE CREAR CUENTA NUEVO */}
+        <div className="mt-8 text-center flex flex-col gap-3">
+          <p className="text-[10px] uppercase tracking-widest text-gray-500">
+            ¿No tienes una cuenta?{' '}
+            <Link to="/register" className="text-dk-gold hover:text-white font-bold transition-colors">
+              Regístrate aquí
+            </Link>
+          </p>
+          <Link to="/" className="text-[9px] uppercase tracking-[0.2em] font-bold text-gray-600 hover:text-white transition-colors border-b border-transparent hover:border-white pb-1 inline-block mx-auto">
+            ← Regresar al inicio
           </Link>
         </div>
-      </div>
+
+      </motion.div>
     </div>
   );
 }
