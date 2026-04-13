@@ -90,6 +90,8 @@ function Dashboard() {
         <Link to="/agenda" className="text-gray-400 hover:text-white transition-colors">Agenda</Link>
         <Link to="/staff" className="text-gray-400 hover:text-white transition-colors">Staff</Link>
         <Link to="/users" className="text-gray-400 hover:text-white transition-colors">Usuarios</Link>
+        <Link to="/gestion-servicios" className="text-gray-400 hover:text-white transition-colors">Cortes</Link>
+        <Link to="/inventory" className="text-gray-400 hover:text-white transition-colors">Almacén</Link>
         <button onClick={() => logout()} className="text-gray-500 hover:text-red-500 transition-colors pl-6 border-l border-gray-800 uppercase text-[10px] font-bold">Salir</button>
       </motion.nav>
 
