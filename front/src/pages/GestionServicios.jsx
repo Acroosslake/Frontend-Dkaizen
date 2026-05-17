@@ -134,7 +134,7 @@ function GestionServicios() {
                   <div>
                     <label className="text-[10px] text-gray-500 uppercase font-black ml-4 mb-2 block">Duración (min)</label>
                     {/* ✅ DURACIÓN: CON FLECHITAS (NORMAL) */}
-                    <input type="number" required className={inputBase} value={formData.duration} onChange={e => setFormData({...formData, duration: e.target.value})} />
+                    <input type="number" required min="1" className={inputBase} value={formData.duration} onChange={e => setFormData({...formData, duration: e.target.value})} />
                   </div>
                 </div>
 
