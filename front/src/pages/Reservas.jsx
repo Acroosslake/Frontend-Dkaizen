@@ -14,9 +14,25 @@ function Reservas() {
   const [barberosDB, setBarberosDB] = useState([]);
   const [occupiedSlots, setOccupiedSlots] = useState([]); 
   
+  // --- LÓGICA DE FECHAS (HOY Y MAÑANA) ---
+  const hoy = new Date();
+  const manana = new Date(hoy);
+  manana.setDate(manana.getDate() + 1);
+
+  const formatFecha = (dateObj) => {
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const fechaHoyStr = formatFecha(hoy);
+  const fechaMananaStr = formatFecha(manana);
+
   // --- ESTADOS DE SELECCIÓN ---
   const [servicio, setServicio] = useState(null);
   const [barbero, setBarbero] = useState(null);
+  const [fechaReserva, setFechaReserva] = useState(fechaHoyStr); // Por defecto: Hoy
   const [hora, setHora] = useState(null);
   
   // --- ESTADOS DE UI ---
@@ -24,10 +40,8 @@ function Reservas() {
   const [loading, setLoading] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
-  // Horarios base de la barbería
   const totalSlots = ['10:00 AM', '11:00 AM', '12:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM', '06:00 PM'];
 
-  // Detectar scroll para cambiar el estilo del navbar
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
@@ -47,21 +61,20 @@ function Reservas() {
     fetchData();
   }, []);
 
-  // 2. BUSCAR DISPONIBILIDAD
+  // 2. BUSCAR DISPONIBILIDAD (Escucha cambios de Barbero y de Fecha)
   useEffect(() => {
-    if (barbero) {
+    if (barbero && fechaReserva) {
       const fetchOccupied = async () => {
-        const fechaHoy = new Date().toISOString().split('T')[0];
         try {
-          const res = await api.get(`/appointments/occupied?barber_id=${barbero}&date=${fechaHoy}`);
+          const res = await api.get(`/appointments/occupied?barber_id=${barbero}&date=${fechaReserva}`);
           setOccupiedSlots(res.data);
         } catch (e) { console.error("Error al chequear disponibilidad:", e); }
       };
       fetchOccupied();
     }
-  }, [barbero]);
+  }, [barbero, fechaReserva]); // 👈 Ahora se recarga al cambiar de día
 
-  // 3. HELPER PARA HORAS
+  // 3. HELPER PARA HORAS OCUPADAS
   const isSlotOccupied = (slotStr) => {
     const [time, modifier] = slotStr.split(' ');
     let [hours, minutes] = time.split(':');
@@ -71,9 +84,33 @@ function Reservas() {
     return occupiedSlots.includes(formatted);
   };
 
+  // 🌟 HELPER PARA FILTRAR HORAS PASADAS
+  const obtenerHorasValidas = () => {
+    // Si eligió "Mañana", mostrar todas las horas completas sin filtrar
+    if (fechaReserva !== fechaHoyStr) {
+      return totalSlots;
+    }
+
+    const ahora = new Date();
+    
+    return totalSlots.filter(slotStr => {
+      const [time, modifier] = slotStr.split(' ');
+      let [hours, minutes] = time.split(':');
+      hours = parseInt(hours, 10);
+
+      if (modifier === 'PM' && hours !== 12) hours += 12;
+      if (modifier === 'AM' && hours === 12) hours = 0;
+
+      const slotTime = new Date();
+      slotTime.setHours(hours, parseInt(minutes, 10), 0, 0);
+
+      return slotTime > ahora;
+    });
+  };
+
   // 4. CONFIRMACIÓN DE RESERVA
   const handleConfirmarReserva = async () => {
-    if (!servicio || !barbero || !hora) return;
+    if (!servicio || !barbero || !hora || !fechaReserva) return;
     setLoading(true);
     try {
       const [time, modifier] = hora.split(' ');
@@ -81,8 +118,7 @@ function Reservas() {
       if (modifier === 'PM' && hours !== '12') hours = parseInt(hours, 10) + 12;
       if (modifier === 'AM' && hours === '12') hours = '00';
       
-      const fechaHoy = new Date().toISOString().split('T')[0];
-      const appointment_date = `${fechaHoy} ${hours}:${minutes}:00`;
+      const appointment_date = `${fechaReserva} ${hours}:${minutes}:00`; // 👈 Usa la fecha elegida
 
       await api.post('/appointments', {
         service_id: servicio,
@@ -93,11 +129,14 @@ function Reservas() {
       await successAlert('¡RESERVA EXITOSA!', 'Tu turno ha sido bloqueado. ¡Te vemos pronto, fiera!');
       navigate('/perfil');
     } catch (error) {
-      errorAlert('¡ERROR!', error.response?.data?.message || 'No se pudo agendar.');
+      // 👈 Aquí atraparemos el error de 1 cita por día que envíe el backend
+      errorAlert('¡ALTO AHÍ!', error.response?.data?.message || 'No se pudo agendar.');
     } finally {
       setLoading(false);
     }
   };
+
+  const horasFiltradas = obtenerHorasValidas();
 
   return (
     <div className="min-h-screen bg-[#030303] text-white font-sans pb-20 relative overflow-x-hidden selection:bg-dk-gold selection:text-black">
@@ -232,7 +271,7 @@ function Reservas() {
             </div>
           </section>
 
-          {/* PASO 3: HORARIOS REALES */}
+          {/* PASO 3: HORARIOS REALES Y FECHAS */}
           <section className={`transition-all duration-700 ${barbero ? 'opacity-100' : 'opacity-20 pointer-events-none'}`}>
             <div className="flex items-end gap-4 mb-8 border-b border-gray-900 pb-4">
               <span className="text-dk-gold font-vogue text-5xl leading-none">03</span>
@@ -242,27 +281,60 @@ function Reservas() {
             <div className="bg-[#0a0a0a] border border-gray-900 rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-dk-gold/5 blur-[100px] rounded-full"></div>
               
-              <div className="flex flex-wrap gap-4 relative z-10 justify-center md:justify-start">
-                {totalSlots.map((h, i) => {
-                  const busy = isSlotOccupied(h);
-                  return (
-                    <button 
-                      key={i} 
-                      disabled={busy}
-                      onClick={() => setHora(h)}
-                      className={`px-8 py-3 rounded-full border text-[11px] font-black tracking-widest uppercase transition-all duration-300 ${
-                        busy 
-                          ? 'opacity-20 cursor-not-allowed border-gray-800 bg-transparent line-through text-gray-500' 
-                          : hora === h 
-                            ? 'bg-white text-black border-white scale-105 shadow-[0_0_20px_rgba(255,255,255,0.2)]' 
-                            : 'border-gray-800 text-gray-400 bg-black hover:border-gray-500 hover:text-white'
-                      }`}
-                    >
-                      {h} {busy && <span className="ml-1 normal-case font-normal">(Ocupado)</span>}
-                    </button>
-                  );
-                })}
+              {/* 🌟 BOTONES DE SELECCIÓN DE DÍA */}
+              <div className="flex justify-center md:justify-start gap-4 mb-10 relative z-10 border-b border-gray-900 pb-8">
+                <button 
+                  onClick={() => { setFechaReserva(fechaHoyStr); setHora(null); }}
+                  className={`px-8 py-3 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 ${
+                    fechaReserva === fechaHoyStr 
+                    ? 'bg-dk-gold text-black shadow-[0_5px_20px_rgba(212,175,55,0.3)]' 
+                    : 'bg-transparent border border-gray-800 text-gray-500 hover:text-white'
+                  }`}
+                >
+                  Hoy ({String(hoy.getDate()).padStart(2, '0')}/{String(hoy.getMonth() + 1).padStart(2, '0')})
+                </button>
+
+                <button 
+                  onClick={() => { setFechaReserva(fechaMananaStr); setHora(null); }}
+                  className={`px-8 py-3 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 ${
+                    fechaReserva === fechaMananaStr 
+                    ? 'bg-dk-gold text-black shadow-[0_5px_20px_rgba(212,175,55,0.3)]' 
+                    : 'bg-transparent border border-gray-800 text-gray-500 hover:text-white'
+                  }`}
+                >
+                  Mañana ({String(manana.getDate()).padStart(2, '0')}/{String(manana.getMonth() + 1).padStart(2, '0')})
+                </button>
               </div>
+
+              {/* 🌟 VALIDACIÓN VISUAL */}
+              {horasFiltradas.length === 0 ? (
+                <div className="relative z-10 text-center py-8">
+                  <p className="text-gray-400 text-sm tracking-widest uppercase mb-2">Jornada finalizada</p>
+                  <h3 className="text-dk-gold text-2xl font-vogue">Ya no hay horarios disponibles para esta fecha.</h3>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-4 relative z-10 justify-center md:justify-start">
+                  {horasFiltradas.map((h, i) => {
+                    const busy = isSlotOccupied(h);
+                    return (
+                      <button 
+                        key={i} 
+                        disabled={busy}
+                        onClick={() => setHora(h)}
+                        className={`px-8 py-3 rounded-full border text-[11px] font-black tracking-widest uppercase transition-all duration-300 ${
+                          busy 
+                            ? 'opacity-20 cursor-not-allowed border-gray-800 bg-transparent line-through text-gray-500' 
+                            : hora === h 
+                              ? 'bg-white text-black border-white scale-105 shadow-[0_0_20px_rgba(255,255,255,0.2)]' 
+                              : 'border-gray-800 text-gray-400 bg-black hover:border-gray-500 hover:text-white'
+                        }`}
+                      >
+                        {h} {busy && <span className="ml-1 normal-case font-normal">(Ocupado)</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               <p className="text-[9px] text-gray-600 mt-8 uppercase tracking-[0.3em] text-center md:text-left relative z-10">Selecciona el espacio de tu preferencia para continuar</p>
             </div>
           </section>
@@ -276,7 +348,7 @@ function Reservas() {
             disabled={loading}
             className="bg-dk-red hover:bg-red-800 text-white font-black py-5 px-16 rounded-full text-xs uppercase tracking-[0.3em] transition-all transform hover:scale-105 shadow-[0_0_30px_rgba(189,0,3,0.5)] disabled:opacity-50 disabled:hover:scale-100"
           >
-            {loading ? 'SINCRONIZANDO...' : 'CONFIRMAR MI TURNO'}
+            {loading ? 'SINCRONIZANDO...' : 'CONFIRMAR  QUE SOY YO'}
           </button>
           <p className="mt-6 text-[9px] text-gray-500 uppercase tracking-widest">Al confirmar, aceptas nuestra política de inasistencias y reservas.</p>
         </div>

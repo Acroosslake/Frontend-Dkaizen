@@ -3,7 +3,6 @@ import axios from 'axios';
 const api = axios.create({
     // Ahora lee del .env corregido
     baseURL: import.meta.env.VITE_API_URL, 
-    withCredentials: true,
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
