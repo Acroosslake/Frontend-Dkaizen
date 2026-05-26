@@ -1,31 +1,56 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react'; // Agregamos useEffect
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthContext } from '../context/AuthContext';
+import api from '../api/axios'; 
 
 function Servicios() {
   const { user, logout } = useContext(AuthContext);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const menuServicios = [
-    { id: 1, nombre: "Corte Premium", precio: "$35,000", desc: "Asesoría de imagen, lavado profundo, corte de precisión y peinado con productos de primera línea.", imagen: "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&q=80&w=1000" },
-    { id: 2, nombre: "Ritual de Barba", precio: "$25,000", desc: "Afeitado clásico a navaja, toalla caliente ozonizada, perfilado y aceites esenciales hidratantes.", imagen: "https://images.unsplash.com/photo-1621607512022-6aecc4fed814?auto=format&fit=crop&q=80&w=1000" },
-    { id: 3, nombre: "Combo Master VIP", precio: "$55,000", desc: "La experiencia D'Kaizen definitiva. Corte Premium + Ritual de Barba + Masaje capilar relajante.", imagen: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=1000" }
-  ];
+  // 1. Estado para almacenar los servicios que vengan de la base de datos
+  const [menuServicios, setMenuServicios] = useState([]);
+  // 2. Estado para el servicio activo (el que se muestra en la tarjeta grande)
+  const [activo, setActivo] = useState(null);
 
-  const [activo, setActivo] = useState(menuServicios[0]);
+  // 3. El Efecto para ir a buscar los datos a Laravel
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const response = await api.get('/services');
+        // Asumimos que response.data es el arreglo de servicios
+        setMenuServicios(response.data);
+        
+        // Si hay servicios, por defecto marcamos el primero como "activo"
+        if (response.data.length > 0) {
+          setActivo(response.data[0]);
+        }
+      } catch (error) {
+        console.error("Error al cargar los servicios:", error);
+      }
+    };
+
+    fetchServices();
+  }, []); // Solo se ejecuta una vez al montar el componente
+
+  // 4. Pantalla de carga mientras trae los datos de Railway
+  if (!activo || menuServicios.length === 0) {
+    return (
+      <div className="min-h-screen bg-[#030303] flex items-center justify-center">
+        <p className="text-dk-gold font-vogue tracking-widest animate-pulse">Cargando Excelencia...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#030303] text-white font-sans relative flex flex-col overflow-x-hidden selection:bg-dk-gold selection:text-black">
       
       {/* 🌟 CABECERA MINIMALISTA (MARCO SUPERIOR) */}
       <header className="absolute top-0 left-0 w-full flex justify-between items-center px-6 md:px-12 pt-8 z-50">
-        {/* Logo a la izquierda */}
         <Link to="/" className="text-2xl md:text-3xl font-vogue text-white tracking-widest hover:text-dk-gold transition-colors drop-shadow-lg">
           D'KAIZEN
         </Link>
 
-        {/* Botón Flotante a la derecha */}
         <div>
           {user ? (
             <div className="relative">
@@ -85,11 +110,13 @@ function Servicios() {
                 }`}
               >
                 <div className="flex justify-between items-center">
+                  {/* Asegúrate de que tu BD en Laravel devuelva 'name' o cámbialo aquí a 'nombre' si está en español */}
                   <h3 className={`text-xl font-bold transition-colors ${activo.id === s.id ? 'text-white' : 'text-gray-400 group-hover:text-white'}`}>
-                    {s.nombre}
+                    {s.name || s.nombre} 
                   </h3>
+                  {/* Formateo del precio en pesos colombianos */}
                   <span className={`font-vogue text-xl transition-colors ${activo.id === s.id ? 'text-dk-gold' : 'text-gray-500 group-hover:text-gray-300'}`}>
-                    {s.precio}
+                    $ {Number(s.price || s.precio).toLocaleString('es-CO')}
                   </span>
                 </div>
               </div>
@@ -113,11 +140,12 @@ function Servicios() {
             {/* Contenedor de la Imagen */}
             <div className="h-96 md:h-[500px] overflow-hidden relative bg-black">
               <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent z-10"></div>
+              {/* Imagen genérica si la base de datos no trae una URL */}
               <img 
                 key={activo.id} 
-                src={activo.imagen} 
+                src={activo.image || activo.imagen || "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&q=80&w=1000"} 
                 className="w-full h-full object-cover animate-[fadeIn_0.6s_ease-out] group-hover:scale-105 transition-transform duration-1000" 
-                alt={activo.nombre} 
+                alt={activo.name || activo.nombre} 
               />
             </div>
             
@@ -127,13 +155,15 @@ function Servicios() {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
                   <div>
                     <p className="text-dk-gold uppercase tracking-[0.3em] text-[9px] font-bold mb-2">Selección Actual</p>
-                    <h2 className="text-3xl font-vogue text-white leading-none">{activo.nombre}</h2>
+                    <h2 className="text-3xl font-vogue text-white leading-none">{activo.name || activo.nombre}</h2>
                   </div>
-                  <span className="text-2xl font-black text-white bg-white/5 px-4 py-2 rounded-xl">{activo.precio}</span>
+                  <span className="text-2xl font-black text-white bg-white/5 px-4 py-2 rounded-xl">
+                    $ {Number(activo.price || activo.precio).toLocaleString('es-CO')}
+                  </span>
                 </div>
                 
                 <p className="text-gray-400 mb-8 font-light text-sm leading-relaxed">
-                  {activo.desc}
+                  {activo.description || activo.descripcion}
                 </p>
                 
                 <Link to="/reservas" className="block w-full">
@@ -148,7 +178,6 @@ function Servicios() {
         </motion.div>
       </main>
 
-      {/* Animación personalizada para el cambio de imagen */}
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes fadeIn { 
           from { opacity: 0; filter: blur(10px); } 
