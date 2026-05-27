@@ -7,14 +7,14 @@ import Agenda from './pages/Agenda';
 import Staff from './pages/Staff';
 import Reservas from './pages/Reservas';
 import Users from './pages/Users';
-import Servicios from './pages/Servicios'; // Esta es la vista pública
-import GestionServicios from './pages/GestionServicios'; // ✅ Nueva: Para crear/editar
-import Inventory from './pages/Inventory'; // ✅ Nueva: Almacén
+import Servicios from './pages/Servicios'; 
+import GestionServicios from './pages/GestionServicios';
+import Inventory from './pages/Inventory'; 
 import Perfil from './pages/Perfil'; 
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Register from './pages/Register';
-
+import BarberDashboard from './pages/BarberDashboard'; 
 
 function App() {
   return (
@@ -27,14 +27,19 @@ function App() {
       <Route path="/restablecer-contrasena" element={<ResetPassword />} />
       <Route path="/register" element={<Register />} />
       
-      {/* 🔵 RUTA DE PERFIL (Protegida para ambos roles) */}
-      <Route element={<ProtectedRoute allowedRoles={['admin', 'client']} />}>
+      {/* 🔵 RUTA DE PERFIL (Protegida paratodos los roles) */}
+      <Route element={<ProtectedRoute allowedRoles={['admin', 'client', 'barber']} />}>
         <Route path="/perfil" element={<Perfil />} />
       </Route>
 
       {/* 🟡 RUTAS PROTEGIDAS SOLO PARA CLIENTES */}
       <Route element={<ProtectedRoute allowedRoles={['client']} />}>
         <Route path="/reservas" element={<Reservas />} />
+      </Route>
+
+      {/* 🟠 RUTA DEL DASHBOARD DEL BARBER (Protegida para barberos) */ }
+      <Route element={<ProtectedRoute allowedRoles={['barber']} />}>
+        <Route path="/barber-dashboard" element={<BarberDashboard />} />
       </Route>
 
       {/* 🔴 RUTAS PROTEGIDAS SOLO PARA ADMINS */}
