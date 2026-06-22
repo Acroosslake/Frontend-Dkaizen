@@ -30,8 +30,10 @@ function Login() {
       const userRole = response.data.user.role;
       if (userRole === 'admin') {
           navigate('/dashboard');
+      } else if (userRole === 'barber') {
+          navigate('/barber-dashboard'); // 🚀 Redirección para el barbero
       } else {
-          navigate('/reservas'); 
+          navigate('/reservas'); // Clientes comunes
       }
 
     } catch (err) {
@@ -56,6 +58,8 @@ function Login() {
         const userRole = response.data.user.role;
         if (userRole === 'admin') {
             navigate('/dashboard');
+        } else if (userRole === 'barber') {
+            navigate('/barber-dashboard'); // 🚀 Redirección en login con Google
         } else {
             navigate('/reservas'); 
         }
@@ -188,7 +192,6 @@ function Login() {
           </div>
         </div>
 
-        {/* ✅ AQUÍ ESTÁ EL BOTÓN DE CREAR CUENTA NUEVO */}
         <div className="mt-8 text-center flex flex-col gap-3">
           <p className="text-[10px] uppercase tracking-widest text-gray-500">
             ¿No tienes una cuenta?{' '}
