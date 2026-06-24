@@ -171,7 +171,7 @@ function Home() {
             <div className="w-full md:w-1/3 space-y-8 px-4">
               <div>
                 <h3 className="text-dk-gold font-vogue text-2xl mb-2">Dirección</h3>
-                <p className="text-gray-400 text-sm">Calle 123 # 45-67<br/>Zona T, Bogotá, Colombia</p>
+                <p className="text-gray-400 text-sm">Cra. 78 3a96<br/>Kennedy, Bogotá, Colombia</p>
               </div>
               <div>
                 <h3 className="text-dk-gold font-vogue text-2xl mb-2">Horarios</h3>
@@ -179,7 +179,7 @@ function Home() {
               </div>
               <div>
                 <h3 className="text-dk-gold font-vogue text-2xl mb-2">Contacto</h3>
-                <p className="text-gray-400 text-sm">+57 300 123 4567<br/>hola@dkaizen.com</p>
+                <p className="text-gray-400 text-sm">+57 300 710 8267<br/>soporte.dkaizen@gmail.com</p>
               </div>
               <Link to="/reservas" className="inline-block mt-4 text-xs font-black uppercase tracking-widest text-white border-b border-dk-red pb-1 hover:text-dk-red transition-colors">
                 Reserva tu espacio →
